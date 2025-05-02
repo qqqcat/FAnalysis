@@ -1,0 +1,88 @@
+{
+  "app_name": "Financial Analysis Platform",
+  "dashboard": "Dashboard",
+  "reports": "Reports",
+  "analysis": "Analysis",
+  "light_mode": "Light Mode",
+  "dark_mode": "Dark Mode",
+  "loading": "Loading...",
+  "error": "Error occurred",
+  "retry": "Retry",
+  "footer": "Financial Analysis Platform",
+  "no_data": "No data available",
+  "parameter_sets": {
+    "default": "Default",
+    "short_term": "Short Term",
+    "medium_term": "Medium Term",
+    "high_freq": "High Frequency",
+    "tight_channel": "Tight Channel",
+    "wide_channel": "Wide Channel",
+    "trend_following": "Trend Following",
+    "momentum": "Momentum",
+    "volatility": "Volatility",
+    "ichimoku": "Ichimoku"
+  },
+  "categories": {
+    "forex": "Forex",
+    "commodities": "Commodities",
+    "indices": "Market Indices"
+  },
+  "chart_analysis": {
+    "title": "Technical Chart Analysis",
+    "select_symbol": "Select Symbol",
+    "select_parameter": "Select Parameter Set",
+    "select_period": "Select Period",
+    "periods": {
+      "1d": "1 Day",
+      "5d": "5 Days",
+      "1mo": "1 Month",
+      "3mo": "3 Months", 
+      "6mo": "6 Months",
+      "1y": "1 Year",
+      "2y": "2 Years",
+      "5y": "5 Years"
+    },
+    "generate_charts": "Generate Charts",
+    "view_report": "View Full Report",
+    "price_chart": "Price Chart",
+    "loading_chart": "Loading chart...",
+    "select_timeframe": "Select Timeframe",
+    "chart_type": "Chart Type",
+    "candlestick": "Candlestick",
+    "line": "Line",
+    "moving_averages": "Moving Averages",
+    "indicators": "Indicators"
+  },
+  "dashboard": {
+    "title": "Market Overview",
+    "quick_analysis": "Quick Analysis",
+    "recent_reports": "Recent Reports",
+    "market_summary": "Market Summary",
+    "top_movers": "Top Movers",
+    "optimal_indicators": "Optimal Indicators",
+    "view_details": "View Details"
+  },
+  "detailed_report": {
+    "title": "Detailed Technical Analysis Report",
+    "select_report": "Select Report",
+    "report_not_found": "Report not found",
+    "price_data": "Price Data",
+    "technical_indicators": "Technical Indicators",
+    "trend_analysis": "Trend Analysis",
+    "strategy_signals": "Strategy Signals",
+    "recommendation": "Recommendation",
+    "generate_new_report": "Generate New Report",
+    "strategy_explanation": "Strategy Explanation",
+    "download_report": "Download Report",
+    "print_report": "Print Report"
+  },
+  "signals": {
+    "bullish": "Bullish",
+    "bearish": "Bearish",
+    "neutral": "Neutral",
+    "strong_bullish": "Strong Bullish",
+    "strong_bearish": "Strong Bearish",
+    "overbought": "Overbought",
+    "oversold": "Oversold"
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "app_name": "金融分析平台",
+  "dashboard": "仪表盘",
+  "reports": "报告",
+  "analysis": "分析",
+  "light_mode": "浅色模式",
+  "dark_mode": "深色模式",
+  "loading": "加载中...",
+  "error": "发生错误",
+  "retry": "重试",
+  "footer": "金融分析平台",
+  "no_data": "暂无数据",
+  "parameter_sets": {
+    "default": "默认",
+    "short_term": "短期",
+    "medium_term": "中期",
+    "high_freq": "高频",
+    "tight_channel": "窄通道",
+    "wide_channel": "宽通道",
+    "trend_following": "趋势跟踪",
+    "momentum": "动量",
+    "volatility": "波动性",
+    "ichimoku": "一目均衡"
+  },
+  "categories": {
+    "forex": "外汇",
+    "commodities": "大宗商品",
+    "indices": "市场指数"
+  },
+  "chart_analysis": {
+    "title": "技术图表分析",
+    "select_symbol": "选择交易对",
+    "select_parameter": "选择参数集",
+    "select_period": "选择周期",
+    "periods": {
+      "1d": "1天",
+      "5d": "5天",
+      "1mo": "1个月",
+      "3mo": "3个月", 
+      "6mo": "6个月",
+      "1y": "1年",
+      "2y": "2年",
+      "5y": "5年"
+    },
+    "generate_charts": "生成图表",
+    "view_report": "查看完整报告",
+    "price_chart": "价格图表",
+    "loading_chart": "图表加载中...",
+    "select_timeframe": "选择时间框架",
+    "chart_type": "图表类型",
+    "candlestick": "蜡烛图",
+    "line": "线图",
+    "moving_averages": "移动平均线",
+    "indicators": "指标"
+  },
+  "dashboard": {
+    "title": "市场概览",
+    "quick_analysis": "快速分析",
+    "recent_reports": "最近报告",
+    "market_summary": "市场总结",
+    "top_movers": "主要波动",
+    "optimal_indicators": "最优指标",
+    "view_details": "查看详情"
+  },
+  "detailed_report": {
+    "title": "详细技术分析报告",
+    "select_report": "选择报告",
+    "report_not_found": "报告未找到",
+    "price_data": "价格数据",
+    "technical_indicators": "技术指标",
+    "trend_analysis": "趋势分析",
+    "strategy_signals": "策略信号",
+    "recommendation": "建议",
+    "generate_new_report": "生成新报告",
+    "strategy_explanation": "策略说明",
+    "download_report": "下载报告",
+    "print_report": "打印报告"
+  },
+  "signals": {
+    "bullish": "看涨",
+    "bearish": "看跌",
+    "neutral": "中性",
+    "strong_bullish": "强烈看涨",
+    "strong_bearish": "强烈看跌",
+    "overbought": "超买",
+    "oversold": "超卖"
+  }
+}

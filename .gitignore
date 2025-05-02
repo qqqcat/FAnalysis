@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Charts (可能很大且可以重新生成)
+Charts/*.png
+Charts/*.html
+
+# 数据文件 (通常较大)
+Data/*
+!Data/.gitkeep
+
+# 报告文件 (可能很大)
+Reports/*
+!Reports/.gitkeep
+
+# 依赖环境
+venv/
+env/
+ENV/
+node_modules/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# 日志和临时文件
+*.log
+logs/
+temp/
+tmp/
+*.tmp
+*.bak
