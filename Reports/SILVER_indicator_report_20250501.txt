@@ -1,0 +1,88 @@
+Technical Indicator Report for SILVER
+Date: 20250501
+============================================================
+
+PRICE DATA:
+Last Close: 32.8600
+Previous Close: 32.5310
+Change: 0.3290 (1.01%)
+
+MOVING AVERAGES:
+SMA5: 32.9290
+SMA10: 32.9441
+SMA20: 31.9783
+SMA50: 32.7758
+SMA100: 31.9664
+SMA150: nan
+
+EMA5: 32.8945
+EMA10: 32.8102
+EMA20: 32.6832
+EMA50: 32.5594
+EMA100: 32.3143
+EMA150: 32.2148
+
+OSCILLATORS:
+RSI(14): 69.04
+Stochastic %K: 76.62
+Stochastic %D: 82.76
+MACD: 0.1038
+MACD Signal: 0.0074
+MACD Histogram: 0.0965
+
+VOLATILITY:
+Bollinger Upper: 34.7374
+Bollinger Middle: 31.9783
+Bollinger Lower: 29.2192
+ATR(14): 0.5353
+Keltner Channel Upper: 33.7538
+Keltner Channel Middle: 32.6832
+Keltner Channel Lower: 31.6126
+Bollinger Band Squeeze: No
+
+TREND INDICATORS:
+Parabolic SAR: 29.7349
+ADX(14): 10.79
+Trend Strength: Weak
+
+ICHIMOKU CLOUD:
+Tenkan-sen (Conversion Line): 32.8425
+Kijun-sen (Base Line): 31.7875
+Senkou Span A (Leading Span A): 33.3770
+Senkou Span B (Leading Span B): 32.3350
+Cloud Direction: Neutral
+
+VOLUME INDICATORS:
+On-Balance Volume: 120060
+OBV 20-period MA: 79073
+OBV Trend: Bullish
+
+STRATEGY ANALYSIS:
+TREND FOLLOWING STRATEGY:
+SMA(50,200) Cross Signal: Bearish
+EMA(12,26) Cross Signal: Bullish
+ADX(14) Trend Strength: 10.79 (Weak)
+Overall Trend Signal: MIXED/NEUTRAL
+
+MOMENTUM VALIDATION STRATEGY:
+RSI(14) Signal: Neutral
+MACD Cross Signal: Bullish
+Stochastic Signal: Bearish
+Momentum Score: 0
+Overall Momentum Signal: NEUTRAL
+
+VOLATILITY TRADING STRATEGY:
+Bollinger Band Squeeze: No
+Bollinger Band Width: 0.1726
+ATR(14) Percentage: 1.63%
+Volatility Status: NORMAL
+
+ICHIMOKU MULTI-TIMEFRAME STRATEGY:
+Ichimoku Cloud: Neutral
+Parabolic SAR: Bullish
+On-Balance Volume: Bullish
+Overall Ichimoku Signal: STRONG BULLISH
+
+TRADITIONAL TREND ANALYSIS:
+Short-term trend: NEUTRAL
+Long-term trend: NEUTRAL

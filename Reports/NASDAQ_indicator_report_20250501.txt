@@ -1,0 +1,88 @@
+Technical Indicator Report for NASDAQ
+Date: 20250501
+============================================================
+
+PRICE DATA:
+Last Close: 17710.7402
+Previous Close: 17446.3398
+Change: 264.4004 (1.52%)
+
+MOVING AVERAGES:
+SMA5: 17473.4941
+SMA10: 16969.9331
+SMA20: 16645.3727
+SMA50: 17532.2720
+SMA100: 18608.5158
+SMA150: nan
+
+EMA5: 17422.2776
+EMA10: 17170.2890
+EMA20: 17056.5798
+EMA50: 17514.6854
+EMA100: 18043.4235
+EMA150: 18237.1346
+
+OSCILLATORS:
+RSI(14): 70.00
+Stochastic %K: 95.26
+Stochastic %D: 96.68
+MACD: 0.0580
+MACD Signal: -207.2413
+MACD Histogram: 207.2993
+
+VOLATILITY:
+Bollinger Upper: 18038.8035
+Bollinger Middle: 16645.3727
+Bollinger Lower: 15251.9418
+ATR(14): 458.9564
+Keltner Channel Upper: 17974.4926
+Keltner Channel Middle: 17056.5798
+Keltner Channel Lower: 16138.6670
+Bollinger Band Squeeze: No
+
+TREND INDICATORS:
+Parabolic SAR: 15866.7907
+ADX(14): 17.54
+Trend Strength: Weak
+
+ICHIMOKU CLOUD:
+Tenkan-sen (Conversion Line): 16804.0801
+Kijun-sen (Base Line): 16510.2905
+Senkou Span A (Leading Span A): 18217.2324
+Senkou Span B (Leading Span B): 18678.4248
+Cloud Direction: Bearish
+
+VOLUME INDICATORS:
+On-Balance Volume: 15799990000
+OBV 20-period MA: 783702000
+OBV Trend: Bullish
+
+STRATEGY ANALYSIS:
+TREND FOLLOWING STRATEGY:
+SMA(50,200) Cross Signal: Bearish
+EMA(12,26) Cross Signal: Bullish
+ADX(14) Trend Strength: 17.54 (Weak)
+Overall Trend Signal: MIXED/NEUTRAL
+
+MOMENTUM VALIDATION STRATEGY:
+RSI(14) Signal: Bearish
+MACD Cross Signal: Bullish
+Stochastic Signal: Bearish
+Momentum Score: -1
+Overall Momentum Signal: BEARISH
+
+VOLATILITY TRADING STRATEGY:
+Bollinger Band Squeeze: No
+Bollinger Band Width: 0.1674
+ATR(14) Percentage: 2.59%
+Volatility Status: HIGH - Trending market
+
+ICHIMOKU MULTI-TIMEFRAME STRATEGY:
+Ichimoku Cloud: Bearish
+Parabolic SAR: Bullish
+On-Balance Volume: Bullish
+Overall Ichimoku Signal: BULLISH
+
+TRADITIONAL TREND ANALYSIS:
+Short-term trend: NEUTRAL
+Long-term trend: NEUTRAL

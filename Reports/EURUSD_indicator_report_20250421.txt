@@ -1,0 +1,88 @@
+Technical Indicator Report for EURUSD
+Date: 20250421
+============================================================
+
+PRICE DATA:
+Last Close: 1.1397
+Previous Close: 1.1293
+Change: 0.0104 (0.92%)
+
+MOVING AVERAGES:
+SMA5: 1.1326
+SMA10: 1.1151
+SMA20: 1.0984
+SMA50: 1.0754
+SMA100: 1.0584
+SMA150: nan
+
+EMA5: 1.1292
+EMA10: 1.1182
+EMA20: 1.1047
+EMA50: 1.0834
+EMA100: 1.0717
+EMA150: 1.0693
+
+OSCILLATORS:
+RSI(14): 77.94
+Stochastic %K: 81.89
+Stochastic %D: 79.94
+MACD: 0.0160
+MACD Signal: 0.0120
+MACD Histogram: 0.0040
+
+VOLATILITY:
+Bollinger Upper: 1.1419
+Bollinger Middle: 1.0984
+Bollinger Lower: 1.0549
+ATR(14): 0.0173
+Keltner Channel Upper: 1.1392
+Keltner Channel Middle: 1.1047
+Keltner Channel Lower: 1.0701
+Bollinger Band Squeeze: No
+
+TREND INDICATORS:
+Parabolic SAR: 1.1020
+ADX(14): 47.90
+Trend Strength: Strong
+
+ICHIMOKU CLOUD:
+Tenkan-sen (Conversion Line): 1.1182
+Kijun-sen (Base Line): 1.1107
+Senkou Span A (Leading Span A): 1.0636
+Senkou Span B (Leading Span B): 1.0559
+Cloud Direction: Bullish
+
+VOLUME INDICATORS:
+On-Balance Volume: 0
+OBV 20-period MA: 0
+OBV Trend: Bearish
+
+STRATEGY ANALYSIS:
+TREND FOLLOWING STRATEGY:
+SMA(50,200) Cross Signal: Bearish
+EMA(12,26) Cross Signal: Bullish
+ADX(14) Trend Strength: 47.90 (Strong)
+Overall Trend Signal: MIXED/NEUTRAL
+
+MOMENTUM VALIDATION STRATEGY:
+RSI(14) Signal: Bearish
+MACD Cross Signal: Bullish
+Stochastic Signal: Neutral
+Momentum Score: 0
+Overall Momentum Signal: NEUTRAL
+
+VOLATILITY TRADING STRATEGY:
+Bollinger Band Squeeze: No
+Bollinger Band Width: 0.0793
+ATR(14) Percentage: 1.52%
+Volatility Status: NORMAL
+
+ICHIMOKU MULTI-TIMEFRAME STRATEGY:
+Ichimoku Cloud: Bullish
+Parabolic SAR: Bullish
+On-Balance Volume: Bearish
+Overall Ichimoku Signal: BULLISH
+
+TRADITIONAL TREND ANALYSIS:
+Short-term trend: BULLISH
+Long-term trend: NEUTRAL

@@ -1,0 +1,46 @@
+Technical Indicator Report for USDJPY
+Date: 20250430
+============================================================
+
+PRICE DATA:
+Last Close: 142.2990
+Previous Close: 142.1780
+Change: 0.1210 (0.09%)
+
+MOVING AVERAGES:
+SMA5: 142.8840
+SMA10: 142.6314
+SMA20: 144.7011
+SMA50: 147.5377
+SMA100: 151.3822
+SMA200: nan
+
+EMA5: 142.6569
+EMA10: 143.1400
+EMA20: 144.4397
+EMA50: 147.2296
+EMA100: 149.4793
+EMA200: nan
+
+OSCILLATORS:
+RSI(14): 38.42
+Stochastic %K: 31.91
+Stochastic %D: 36.42
+MACD: -1.7311
+MACD Signal: -1.7102
+MACD Histogram: -0.0208
+
+VOLATILITY:
+Bollinger Upper: 149.9015
+Bollinger Middle: 144.7011
+Bollinger Lower: 139.5007
+Bollinger Width: 0.0719
+ATR(14): 1.9870
+
+SUPPORT & RESISTANCE:
+Resistance Level 1: 143.7220
+Support Level 1: 140.8760
+
+TREND ANALYSIS:
+Short-term trend: BEARISH
+Long-term trend: NEUTRAL

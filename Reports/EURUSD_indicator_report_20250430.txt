@@ -1,0 +1,46 @@
+Technical Indicator Report for EURUSD
+Date: 20250430
+============================================================
+
+PRICE DATA:
+Last Close: 1.1389
+Previous Close: 1.1409
+Change: -0.0020 (-0.17%)
+
+MOVING AVERAGES:
+SMA5: 1.1368
+SMA10: 1.1373
+SMA20: 1.1187
+SMA50: 1.0894
+SMA100: 1.0643
+SMA200: nan
+
+EMA5: 1.1377
+EMA10: 1.1333
+EMA20: 1.1216
+EMA50: 1.0970
+EMA100: 1.0812
+EMA200: nan
+
+OSCILLATORS:
+RSI(14): 64.62
+Stochastic %K: 73.49
+Stochastic %D: 73.81
+MACD: 0.0156
+MACD Signal: 0.0155
+MACD Histogram: 0.0002
+
+VOLATILITY:
+Bollinger Upper: 1.1636
+Bollinger Middle: 1.1187
+Bollinger Lower: 1.0738
+Bollinger Width: 0.0803
+ATR(14): 0.0152
+
+SUPPORT & RESISTANCE:
+Resistance Level 1: 1.1503
+Support Level 1: 1.1275
+
+TREND ANALYSIS:
+Short-term trend: BULLISH
+Long-term trend: NEUTRAL

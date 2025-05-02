@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>USDJPY 技术分析报告 | 2025-04-30</title>
+    <style>
+        :root {
+            --primary-color: #1a56db;
+            --secondary-color: #e53e3e;
+            --bg-color: #f7fafc;
+            --text-color: #2d3748;
+            --border-color: #e2e8f0;
+            --bullish-color: #38a169;
+            --bearish-color: #e53e3e;
+            --neutral-color: #718096;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            padding: 0;
+            margin: 0;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--primary-color), #1e429f);
+            color: white;
+            padding: 30px 0;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+        
+        .header-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .subtitle {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+        
+        .date-badge {
+            background-color: rgba(255, 255, 255, 0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        
+        .report-section {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+        
+        h1, h2, h3, h4 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+        
+        h1 {
+            font-size: 28px;
+        }
+        
+        h2 {
+            font-size: 22px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            margin-top: 20px;
+        }
+        
+        h3 {
+            font-size: 18px;
+            margin-top: 15px;
+        }
+        
+        p {
+            margin-bottom: 15px;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .status-card {
+            background-color: white;
+            border-radius: 6px;
+            padding: 15px;
+            border-left: 4px solid var(--primary-color);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .status-card .label {
+            font-size: 14px;
+            color: var(--neutral-color);
+            margin-bottom: 5px;
+        }
+        
+        .status-card .value {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .trend-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-right: 10px;
+            font-size: 14px;
+        }
+        
+        .bullish {
+            background-color: rgba(56, 161, 105, 0.1);
+            color: var(--bullish-color);
+        }
+        
+        .bearish {
+            background-color: rgba(229, 62, 62, 0.1);
+            color: var(--bearish-color);
+        }
+        
+        .neutral {
+            background-color: rgba(113, 128, 150, 0.1);
+            color: var(--neutral-color);
+        }
+        
+        .indicator-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        
+        .indicator-table th, .indicator-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .indicator-table th {
+            background-color: #f8fafc;
+            font-weight: 600;
+        }
+        
+        .indicator-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .chart-container {
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .chart-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 6px;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .chart-caption {
+            margin-top: 10px;
+            font-style: italic;
+            color: var(--neutral-color);
+            font-size: 14px;
+        }
+        
+        .fib-levels {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        
+        .fib-column {
+            flex: 1;
+        }
+        
+        .level-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding: 8px;
+            border-radius: 4px;
+            background-color: #f8fafc;
+        }
+        
+        .level-pct {
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .recommendation-box {
+            background: linear-gradient(135deg, #f6f0ff, #e6f7ff);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 5px solid var(--primary-color);
+        }
+        
+        .recommendation-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: var(--primary-color);
+        }
+        
+        .recommendation-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .recommendation-item {
+            background-color: white;
+            border-radius: 6px;
+            padding: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .recommendation-item .label {
+            font-size: 12px;
+            color: var(--neutral-color);
+            margin-bottom: 5px;
+        }
+        
+        .recommendation-item .value {
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        .risk-assessment {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .risk-level {
+            width: 100px;
+            height: 6px;
+            background-color: #e2e8f0;
+            border-radius: 3px;
+            margin: 0 15px;
+            position: relative;
+        }
+        
+        .risk-fill {
+            position: absolute;
+            height: 100%;
+            border-radius: 3px;
+            left: 0;
+        }
+        
+        .risk-low .risk-fill {
+            width: 30%;
+            background-color: #38a169;
+        }
+        
+        .risk-medium .risk-fill {
+            width: 60%;
+            background-color: #ecc94b;
+        }
+        
+        .risk-high .risk-fill {
+            width: 90%;
+            background-color: #e53e3e;
+        }
+        
+        .summary {
+            line-height: 1.8;
+            font-size: 16px;
+        }
+        
+        footer {
+            margin-top: 40px;
+            padding: 20px 0;
+            text-align: center;
+            border-top: 1px solid var(--border-color);
+            color: var(--neutral-color);
+            font-size: 14px;
+        }
+        
+        .disclaimer {
+            background-color: #fff8f8;
+            border-left: 4px solid #feb2b2;
+            padding: 15px;
+            font-size: 14px;
+            color: #742a2a;
+            margin: 30px 0 20px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">USDJPY 技术分析报告</div>
+                <div class="subtitle">全面技术指标分析</div>
+                <div class="date-badge">2025年04月30日</div>
+            </div>
+        </div>
+    </header>
+    
+    <div class="container">
+        <section class="report-section">
+            <h2>价格状态与走势</h2>
+            
+            <div class="status-grid">
+                <div class="status-card">
+                    <div class="label">当前价格</div>
+                    <div class="value">142.2990</div>
+                </div>
+                <div class="status-card">
+                    <div class="label">前收盘价</div>
+                    <div class="value">142.1780</div>
+                </div>
+                <div class="status-card">
+                    <div class="label">日变动</div>
+                    <div class="value">0.1210 (0.09%)</div>
+                </div>
+                <div class="status-card">
+                    <div class="label">52周区间</div>
+                    <div class="value">128.0691 - 149.4139</div>
+                </div>
+            </div>
+            
+            <h3>走势分析</h3>
+            <div>
+                <div class="trend-badge bearish">日线: BEARISH</div>
+                <div class="trend-badge bearish">周线: BEARISH</div>
+                <div class="trend-badge neutral">月线: NEUTRAL</div>
+            </div>
+        </section>
+        
+        <section class="report-section">
+            <h2>技术指标分析</h2>
+            
+            <h3>移动平均线</h3>
+            <table class="indicator-table">
+                <tr>
+                    <th>指标</th>
+                    <th>数值</th>
+                    <th>信号</th>
+                </tr>
+                <tr>
+                    <td>MA5</td>
+                    <td>142.8840</td>
+                    <td><span class="trend-badge bearish">价格在下方</span></td>
+                </tr>
+                <tr>
+                    <td>MA10</td>
+                    <td>142.6314</td>
+                    <td><span class="trend-badge bearish">价格在下方</span></td>
+                </tr>
+                <tr>
+                    <td>MA20</td>
+                    <td>144.7011</td>
+                    <td><span class="trend-badge bearish">价格在下方</span></td>
+                </tr>
+                <tr>
+                    <td>MA50</td>
+                    <td>147.5377</td>
+                    <td><span class="trend-badge bearish">价格在下方</span></td>
+                </tr>
+                <tr>
+                    <td>MA100</td>
+                    <td>151.3822</td>
+                    <td><span class="trend-badge bearish">价格在下方</span></td>
+                </tr>
+                <tr>
+                    <td>MA200</td>
+                    <td>0.0000</td>
+                    <td><span class="trend-badge bullish">价格在上方</span></td>
+                </tr>
+                <tr>
+                    <td>移动平均线排列</td>
+                    <td>-</td>
+                    <td><span class="trend-badge neutral">中性排列</span></td>
+                </tr>
+            </table>
+            
+            <h3>振荡指标</h3>
+            <table class="indicator-table">
+                <tr>
+                    <th>指标</th>
+                    <th>数值</th>
+                    <th>信号</th>
+                </tr>
+                <tr>
+                    <td>RSI (14)</td>
+                    <td>38.42</td>
+                    <td><span class="trend-badge bearish">看跌</span></td>
+                </tr>
+                <tr>
+                    <td>随机指标 %K</td>
+                    <td>31.91</td>
+                    <td><span class="trend-badge bearish">看跌</span></td>
+                </tr>
+                <tr>
+                    <td>随机指标 %D</td>
+                    <td>36.42</td>
+                    <td><span class="trend-badge bearish">看跌</span></td>
+                </tr>
+                <tr>
+                    <td>MACD线</td>
+                    <td>-1.7311</td>
+                    <td><span class="trend-badge bearish">看跌</span></td>
+                </tr>
+                <tr>
+                    <td>MACD信号线</td>
+                    <td>-1.7102</td>
+                    <td><span class="trend-badge bearish">看跌</span></td>
+                </tr>
+                <tr>
+                    <td>MACD柱状图</td>
+                    <td>-0.0208</td>
+                    <td><span class="trend-badge bearish">看跌</span></td>
+                </tr>
+            </table>
+            
+            <h3>波动性指标</h3>
+            <table class="indicator-table">
+                <tr>
+                    <th>指标</th>
+                    <th>数值</th>
+                </tr>
+                <tr>
+                    <td>布林带上轨</td>
+                    <td>149.9015</td>
+                </tr>
+                <tr>
+                    <td>布林带中轨</td>
+                    <td>144.7011</td>
+                </tr>
+                <tr>
+                    <td>布林带下轨</td>
+                    <td>139.5007</td>
+                </tr>
+                <tr>
+                    <td>布林带宽度</td>
+                    <td>0.0719</td>
+                </tr>
+                <tr>
+                    <td>ATR(14)</td>
+                    <td>1.9870</td>
+                </tr>
+            </table>
+            
+            <div class="chart-container">
+                <img src="/charts/USDJPY_indicators_20250430.png" alt="USDJPY 指标图表" class="chart-image">
+                <div class="chart-caption">USDJPY 价格走势及主要技术指标 (RSI、MACD)</div>
+            </div>
+            
+            <div class="chart-container">
+                <img src="/charts/USDJPY_bollinger_20250430.png" alt="USDJPY 布林带图表" class="chart-image">
+                <div class="chart-caption">USDJPY 价格走势及布林带指标</div>
+            </div>
+        </section>
+        
+        <section class="report-section">
+            <h2>支撑与阻力位</h2>
+            <table class="indicator-table">
+                <tr>
+                    <th>类型</th>
+                    <th>价位</th>
+                    <th>强度</th>
+                </tr>
+                <tr>
+                    <td>阻力位 3</td>
+                    <td>147.6960</td>
+                    <td>强</td>
+                </tr>
+                <tr>
+                    <td>阻力位 2</td>
+                    <td>145.7090</td>
+                    <td>中</td>
+                </tr>
+                <tr>
+                    <td>阻力位 1</td>
+                    <td>143.7220</td>
+                    <td>弱</td>
+                </tr>
+                <tr>
+                    <td>当前价格</td>
+                    <td>142.2990</td>
+                    <td>-</td>
+                </tr>
+                <tr>
+                    <td>支撑位 1</td>
+                    <td>140.8760</td>
+                    <td>弱</td>
+                </tr>
+                <tr>
+                    <td>支撑位 2</td>
+                    <td>138.8890</td>
+                    <td>中</td>
+                </tr>
+                <tr>
+                    <td>支撑位 3</td>
+                    <td>136.9020</td>
+                    <td>强</td>
+                </tr>
+            </table>
+        </section>
+        
+        <section class="report-section">
+            <h2>斐波那契分析</h2>
+            <p>基于从128.0691到149.4139的波动计算</p>
+            
+            <div class="fib-levels">
+                <div class="fib-column">
+                    <h3>回调水平</h3>
+                    <div class="level-item">
+                        <span>0%</span>
+                        <span class="level-pct">149.4139</span>
+                    </div>
+                    <div class="level-item">
+                        <span>23.6%</span>
+                        <span class="level-pct">144.3765</span>
+                    </div>
+                    <div class="level-item">
+                        <span>38.2%</span>
+                        <span class="level-pct">141.2602</span>
+                    </div>
+                    <div class="level-item">
+                        <span>50.0%</span>
+                        <span class="level-pct">138.7415</span>
+                    </div>
+                    <div class="level-item">
+                        <span>61.8%</span>
+                        <span class="level-pct">136.2228</span>
+                    </div>
+                </div>
+                
+                <div class="fib-column">
+                    <h3>延伸水平</h3>
+                    <div class="level-item">
+                        <span>0%</span>
+                        <span class="level-pct">149.4139</span>
+                    </div>
+                    <div class="level-item">
+                        <span>127.2%</span>
+                        <span class="level-pct">155.2197</span>
+                    </div>
+                    <div class="level-item">
+                        <span>138.2%</span>
+                        <span class="level-pct">157.5676</span>
+                    </div>
+                    <div class="level-item">
+                        <span>161.8%</span>
+                        <span class="level-pct">162.6050</span>
+                    </div>
+                </div>
+            </div>
+            
+            <p><strong>当前价格相对于斐波那契水平:</strong> 价格位于23.6%与38.2%回调水平之间，仍维持上升趋势</p>
+        </section>
+        
+        <section class="report-section">
+            <h2>交易建议</h2>
+            <div class="recommendation-box">
+                <div class="recommendation-title">操作建议: 观望</div>
+                <div class="recommendation-grid">
+                    <div class="recommendation-item">
+                        <div class="label">入场点</div>
+                        <div class="value">等待明确信号</div>
+                    </div>
+                    <div class="recommendation-item">
+                        <div class="label">回调买入点</div>
+                        <div class="value">等待明确信号</div>
+                    </div>
+                    <div class="recommendation-item">
+                        <div class="label">止损</div>
+                        <div class="value">不适用</div>
+                    </div>
+                    <div class="recommendation-item">
+                        <div class="label">目标价 1</div>
+                        <div class="value">不适用</div>
+                    </div>
+                    <div class="recommendation-item">
+                        <div class="label">目标价 2</div>
+                        <div class="value">不适用</div>
+                    </div>
+                    <div class="recommendation-item">
+                        <div class="label">目标价 3</div>
+                        <div class="value">不适用</div>
+                    </div>
+                    <div class="recommendation-item">
+                        <div class="label">风险回报比</div>
+                        <div class="value">1:2.5</div>
+                    </div>
+                </div>
+            </div>
+            
+            <h3>风险评估</h3>
+            <div class="risk-assessment">
+                <span>市场风险水平:</span>
+                <div class="risk-level risk-high">
+                    <div class="risk-fill"></div>
+                </div>
+                <span>中至高等</span>
+            </div>
+            
+            <h3>需要关注的经济事件</h3>
+            <ul>
+                <li>欧洲央行利率决议</li>
+                <li>美联储利率决议</li>
+                <li>欧元区通胀数据</li>
+                <li>美元指数(DXY)走势</li>
+            </ul>
+        </section>
+        
+        <section class="report-section">
+            <h2>综合分析与展望</h2>
+            <div class="summary">
+                <p>USDJPY货币对目前在所有时间周期上均展现出下降趋势。当前交易价格为142.2990，位于主要移动平均线下方，确认了看跌趋势。日线RSI为38.42，表明卖盘压力较大，但尚未达到超卖区域（<30），这意味着可能继续下跌。 本详细报告包含额外的市场深度分析和历史数据比较。</p>
+                
+                <p>技术指标普遍呈现负面信号，布林带宽度为0.0719，表明波动性增加。价格目前处于布林带下半区，下轨139.5007可视为短期目标。MACD值为-1.7311，指示下行趋势可能持续。 波动性分析表明，当前市场波动幅度大于平均水平，交易者应谨慎控制仓位，以应对潜在的市场剧烈波动。</p>
+                
+                <p>短期支撑位预计在140.8760（计算所得的直接支撑位）和138.8890。阻力位则在143.7220（计算所得的直接阻力位）和20日移动平均线144.7011，这可能会阻碍任何反弹尝试。 USDJPY与主要货币如美元、欧元、英镑的相关性分析显示当前市场情绪偏向风险规避。</p>
+                
+                <p>总体趋势分析支持继续看跌，下行目标位于140.8760、138.8890，如果突破138.8890支撑位，可能会进一步下探至136.9020。风险管理建议将止损设置在145.7090上方，避免市场反转带来的损失。</p>
+            </div>
+            
+            <div class="disclaimer">
+                <strong>免责声明：</strong>本技术分析报告仅供参考，不构成投资建议。外汇交易涉及显著风险，过往表现不能保证未来业绩。交易前请充分评估您的风险承受能力。
+            </div>
+        </section>
+    </div>
+    
+    <footer>
+        <div class="container">
+            <p>© 2025 技术分析报告系统 | 生成日期: 2025年04月30日</p>
+        </div>
+    </footer>
+</body>
+</html>
