@@ -137,38 +137,49 @@ def check_has_ticker_row(file_path):
 
 def format_indicator_data(df):
     """
-    Format indicator data for JSON response
+    将指标数据格式化为JSON响应
+    - 确保日期格式正确
+    - 处理缺失值和特殊值
+    - 格式化数据为前端所需的格式
     """
-    # Store index name before resetting
-    index_name = df.index.name if df.index.name else 'Date' # Default to 'Date' if index has no name
+    # 存储索引名称以便重置前使用
+    index_name = df.index.name if df.index.name else 'Date'
     
-    # Reset index, making the original index a column
+    # 重置索引，将原始索引变为列
     df = df.reset_index()
     
-    # Ensure the column derived from the index is datetime
-    # Use the stored index name
+    # 确保由索引派生的列是日期时间类型
     if index_name in df.columns:
-        # Convert to datetime just in case it's not already
+        # 转换为日期时间以防它不是日期时间格式
         df[index_name] = pd.to_datetime(df[index_name], errors='coerce') 
-        # Format the datetime column to string, handle potential NaT from coerce
+        # 将日期时间列格式化为字符串，处理coerce可能产生的NaT
         df[index_name] = df[index_name].dt.strftime('%Y-%m-%d')
-        # Rename the column to 'Date' if it's not already named 'Date' for consistency
+        # 如果列名不是'Date'，为保持一致性重命名为'Date'
         if index_name != 'Date':
-             df.rename(columns={index_name: 'Date'}, inplace=True)
+            df.rename(columns={index_name: 'Date'}, inplace=True)
     else:
-        # Fallback or error handling if the expected index column isn't found
-        logger.warning(f"Expected index column '{index_name}' not found after reset_index(). Date formatting might be incorrect.")
-        # Attempt to find a date-like column if 'Date' doesn't exist
+        # 如果预期的索引列不存在
+        logger.warning(f"重置索引后找不到预期的索引列'{index_name}'。日期格式可能不正确。")
+        # 如果'Date'不存在，尝试查找类似日期的列
         if 'Date' not in df.columns:
-             date_col = next((col for col in df.columns if 'date' in col.lower()), None)
-             if date_col:
-                 df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
-                 df[date_col] = df[date_col].dt.strftime('%Y-%m-%d')
-                 df.rename(columns={date_col: 'Date'}, inplace=True)
-
-
-    # Format to list of objects with date and values
+            date_col = next((col for col in df.columns if 'date' in col.lower()), None)
+            if date_col:
+                df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
+                df[date_col] = df[date_col].dt.strftime('%Y-%m-%d')
+                df.rename(columns={date_col: 'Date'}, inplace=True)
+    
+    # 处理无穷大、NaN和None等特殊值
+    df.replace([np.inf, -np.inf], np.nan, inplace=True)
+    
+    # 格式化为对象列表，每个对象包含日期和值
     result = df.to_dict(orient='records')
+    
+    # 替换所有NaN值为None（对JSON序列化更友好）
+    for record in result:
+        for key, value in record.items():
+            if pd.isna(value):
+                record[key] = None
+    
     return result
 
 # API Routes
@@ -436,64 +447,71 @@ def get_market_summary():
 @app.route('/api/chart-data/<symbol>', methods=['GET'])
 def get_chart_data(symbol):
     """
-    Get combined price and indicator data for frontend charting
-    Optional query parameters:
-    - parameter_set: indicator parameter set to use (default: 'default')
-    - period: time period for data (default: '1y')
+    获取用于前端图表的组合价格和指标数据
+    可选查询参数:
+    - parameter_set: 要使用的指标参数集（默认: 'default'）
+    - period: 数据时间段（默认: '1y'）
     """
     parameter_set = request.args.get('parameter_set', 'default')
     period = request.args.get('period', '1y')
     
     if parameter_set not in PARAMETER_SETS:
-        return jsonify({'error': f'Invalid parameter set: {parameter_set}. Choose from: {", ".join(PARAMETER_SETS)}'}), 400
+        return jsonify({'error': f'无效的参数集: {parameter_set}。请从以下选择: {", ".join(PARAMETER_SETS)}'}), 400
         
     try:
-        # Get raw price data
+        # 获取原始价格数据
         price_data = get_symbol_data(symbol, period)
         if price_data.empty:
-            return jsonify({'error': f'Could not retrieve data for symbol: {symbol}'}), 404
+            return jsonify({'error': f'无法获取符号的数据: {symbol}'}), 404
         
-        # Debug: Print data type of each column to diagnose issues
+        # 调试: 打印每列的数据类型以诊断问题
         logger.info(f"Data columns for {symbol}: {price_data.columns.tolist()}")
         logger.info(f"Data types: {price_data.dtypes}")
         
-        # Ensure all numeric columns are properly converted to float
+        # 确保所有数值列正确转换为浮点型
         for col in price_data.columns:
-            # Skip Date column if it exists
+            # 跳过日期列（如果存在）
             if col in ['Date']:
                 continue
                 
-            # Try to convert to numeric, coerce errors to NaN
+            # 尝试转换为数值，强制错误为NaN
             try:
                 price_data[col] = pd.to_numeric(price_data[col], errors='coerce')
             except Exception as e:
-                logger.warning(f"Could not convert column {col} to numeric: {str(e)}")
+                logger.warning(f"无法将列 {col} 转换为数值: {str(e)}")
         
-        # Check again after conversion
+        # 转换后再次检查
         logger.info(f"Data types after conversion: {price_data.dtypes}")
         
-        # Drop any rows with NaN in essential columns
+        # 删除基本列中包含NaN的行
         essential_columns = ['Open', 'High', 'Low', 'Close']
         for col in essential_columns:
             if col in price_data.columns:
                 price_data = price_data.dropna(subset=[col])
         
-        # Calculate indicators
-        indicator_data = calculate_indicators(price_data.copy(), parameter_set=parameter_set)
-
-        # 合并数据时只保留一份主数据，避免 _x/_y 列
+        # 计算指标
+        try:
+            indicator_data = calculate_indicators(price_data.copy(), parameter_set=parameter_set)
+        except Exception as e:
+            logger.error(f"计算指标时出错: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            # 如果指标计算失败，返回原始价格数据
+            indicator_data = price_data
+        
+        # 合并数据时只保留一组字段，避免_x/_y后缀
         combined_data = price_data.copy()
         for col in indicator_data.columns:
+            if col not in price_data.columns or col in ['Date', 'Open', 'High', 'Low', 'Close', 'Volume']:
+                continue
             combined_data[col] = indicator_data[col]
 
-        # Format data for JSON response
+        # 替换特殊值为NaN，以便在JSON响应中正确处理
         combined_data.replace([pd.NA, None, float('inf'), float('-inf')], np.nan, inplace=True)
+        
+        # 将数据格式化为JSON响应
         formatted_data = format_indicator_data(combined_data)
-        for record in formatted_data:
-            for key, value in record.items():
-                if pd.isna(value):
-                    record[key] = None
-
+        
         logger.info(f"Formatted data length for {symbol}: {len(formatted_data)}")
         if len(formatted_data) > 0:
             logger.info(f"First record for {symbol}: {formatted_data[0]}")

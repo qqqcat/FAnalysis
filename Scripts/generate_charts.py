@@ -23,6 +23,112 @@ from datetime import datetime
 # Importing indicator calculation functions
 from calculate_indicators import calculate_indicators
 
+# Chart configuration constants
+CHART_CONFIG = {
+    "default": {
+        "moving_averages": ["SMA20", "SMA50", "SMA200"],
+        "oscillators": ["RSI", "MACD"],
+        "bands": ["BB_High", "BB_Mid", "BB_Low"],
+        "title": "Default Analysis"
+    },
+    "short_term": {
+        "moving_averages": ["SMA9", "SMA21", "EMA12", "EMA26"],
+        "oscillators": ["RSI7", "MACD_HF"],
+        "bands": ["BB_High", "BB_Mid", "BB_Low"],
+        "title": "Short-Term Trading"
+    },
+    "medium_term": {
+        "moving_averages": ["SMA50", "SMA200", "EMA50", "EMA200"],
+        "oscillators": ["RSI", "MACD"],
+        "bands": ["BB_High", "BB_Mid", "BB_Low"],
+        "title": "Medium-Term Trading"
+    },
+    "trend_following": {
+        "moving_averages": ["SMA50", "SMA200", "EMA12", "EMA26"],
+        "oscillators": ["ADX", "MACD"],
+        "bands": ["BB_High", "BB_Mid", "BB_Low"],
+        "title": "Trend Following"
+    },
+    "momentum": {
+        "moving_averages": ["SMA20", "SMA50"],
+        "oscillators": ["RSI", "MACD", "STOCH_K", "STOCH_D"],
+        "bands": ["BB_High", "BB_Mid", "BB_Low"],
+        "title": "Momentum Strategy"
+    },
+    "volatility": {
+        "moving_averages": ["SMA20"],
+        "oscillators": ["RSI"],
+        "bands": ["BB_High", "BB_Mid", "BB_Low"],
+        "title": "Volatility Strategy"
+    },
+    "tight_channel": {
+        "moving_averages": ["SMA20"],
+        "oscillators": ["RSI"],
+        "bands": ["BB_Tight_High", "BB_Tight_Mid", "BB_Tight_Low"],
+        "title": "Tight Channel Trading"
+    },
+    "wide_channel": {
+        "moving_averages": ["SMA20"], 
+        "oscillators": ["RSI"],
+        "bands": ["BB_Wide_High", "BB_Wide_Mid", "BB_Wide_Low"],
+        "title": "Wide Channel Trading"
+    },
+    "ichimoku": {
+        "moving_averages": [],
+        "oscillators": ["RSI"],
+        "bands": [],
+        "ichimoku_components": ["Ichimoku_Tenkan", "Ichimoku_Kijun", "Ichimoku_SpanA", "Ichimoku_SpanB", "Ichimoku_Chikou"],
+        "secondary_indicators": ["SAR", "OBV", "OBV_MA"],
+        "title": "Ichimoku Cloud Analysis"
+    }
+}
+
+# Chart style configuration
+CHART_STYLES = {
+    "colors": {
+        "price": "black",
+        "sma": "blue",
+        "ema": "purple",
+        "rsi": "purple",
+        "macd": "blue",
+        "signal": "red",
+        "histogram_positive": "green",
+        "histogram_negative": "red",
+        "bb_upper": "blue",
+        "bb_mid": "blue",
+        "bb_lower": "blue",
+        "stoch_k": "green",
+        "stoch_d": "red",
+        "adx": "orange",
+        "ichimoku_tenkan": "red",
+        "ichimoku_kijun": "blue",
+        "ichimoku_spana": "green",
+        "ichimoku_spanb": "red",
+        "ichimoku_chikou": "purple",
+        "sar": "blue",
+        "obv": "purple",
+        "obv_ma": "orange"
+    },
+    "line_styles": {
+        "solid": "-",
+        "dashed": "--",
+        "dotted": ":"
+    },
+    "alpha": {
+        "fill": 0.1,
+        "line": 0.7,
+        "histogram": 0.5
+    },
+    "thresholds": {
+        "rsi_upper": 70,
+        "rsi_lower": 30,
+        "stoch_upper": 80,
+        "stoch_lower": 20,
+        "adx_strong": 25,
+        "adx_moderate": 20
+    }
+}
+
 def generate_parameter_set_charts(symbol, data, output_dir, parameter_sets=None, chart_date=None):
     """
     Generate charts for multiple parameter sets
@@ -110,336 +216,39 @@ def plot_indicators(data, symbol, output_dir, chart_date=None, strategy="default
     chart_files = []
     
     try:
-        # Plot 1: Price with Moving Averages - based on strategy
-        plt.figure(figsize=(12, 8))
-        plt.subplot(3, 1, 1)
-        plt.plot(data.index, data['Close'], label='Close Price')
+        # Get configuration for this strategy
+        config = CHART_CONFIG.get(strategy, CHART_CONFIG["default"])
+        styles = CHART_STYLES
         
-        if strategy == "short_term":
-            # Short-term trading MAs
-            plt.plot(data.index, data['SMA9'], label='SMA9')
-            plt.plot(data.index, data['SMA21'], label='SMA21')
-            plt.plot(data.index, data['EMA12'], label='EMA12')
-            plt.plot(data.index, data['EMA26'], label='EMA26')
-            plt.title(f'{symbol} Price with Short-Term MAs')
-        elif strategy == "medium_term":
-            # Medium-term trading MAs
-            plt.plot(data.index, data['SMA50'], label='SMA50')
-            plt.plot(data.index, data['SMA200'], label='SMA200')  
-            plt.plot(data.index, data['EMA50'], label='EMA50')
-            plt.plot(data.index, data['EMA200'], label='EMA200')
-            plt.title(f'{symbol} Price with Medium-Term MAs')
-        elif strategy == "trend_following":
-            # Trend following strategy MAs
-            plt.plot(data.index, data['SMA50'], label='SMA50')
-            plt.plot(data.index, data['SMA200'], label='SMA200')
-            plt.plot(data.index, data['EMA12'], label='EMA12')
-            plt.plot(data.index, data['EMA26'], label='EMA26')
-            plt.title(f'{symbol} Trend Following - SMA/EMA Crossovers')
-        else:
-            # Default MA parameters
-            plt.plot(data.index, data['SMA20'], label='SMA20')
-            plt.plot(data.index, data['SMA50'], label='SMA50')
-            plt.plot(data.index, data['SMA200'], label='SMA200')
-            plt.title(f'{symbol} Price with Moving Averages')
+        # Generate primary indicator chart
+        indicator_chart_path = generate_indicator_chart(
+            data, symbol, output_dir, chart_date, strategy, config, styles
+        )
+        if indicator_chart_path:
+            chart_files.append(indicator_chart_path)
         
-        plt.legend()
-        plt.grid(True)
+        # Generate Bollinger Bands chart
+        bollinger_chart_path = generate_bollinger_chart(
+            data, symbol, output_dir, chart_date, strategy, config, styles
+        )
+        if bollinger_chart_path:
+            chart_files.append(bollinger_chart_path)
         
-        # Plot 2: RSI or ADX based on strategy
-        plt.subplot(3, 1, 2)
+        # Generate Ichimoku chart if applicable
+        if strategy == "ichimoku" and has_ichimoku_data(data):
+            ichimoku_chart_path = generate_ichimoku_chart(
+                data, symbol, output_dir, chart_date, styles
+            )
+            if ichimoku_chart_path:
+                chart_files.append(ichimoku_chart_path)
         
-        if strategy == "high_freq":
-            plt.plot(data.index, data['RSI7'], label='RSI(7)')
-            plt.axhline(y=70, color='r', linestyle='-', alpha=0.3)
-            plt.axhline(y=30, color='g', linestyle='-', alpha=0.3)
-            plt.title('RSI(7)')
-        elif strategy == "trend_following" and 'ADX' in data.columns:
-            plt.plot(data.index, data['ADX'], label='ADX(14)')
-            plt.axhline(y=25, color='r', linestyle='-', alpha=0.3, label='Strong Trend')
-            plt.axhline(y=20, color='y', linestyle='-', alpha=0.3, label='Moderate Trend')
-            plt.title('ADX - Trend Strength')
-        else:
-            plt.plot(data.index, data['RSI'], label='RSI(14)')
-            plt.axhline(y=70, color='r', linestyle='-', alpha=0.3)
-            plt.axhline(y=30, color='g', linestyle='-', alpha=0.3)
-            plt.title('RSI(14)')
-            
-        plt.legend()
-        plt.grid(True)
-        
-        # Plot 3: MACD or Stochastic based on strategy
-        plt.subplot(3, 1, 3)
-        
-        if strategy == "high_freq" and 'MACD_HF' in data.columns:
-            plt.plot(data.index, data['MACD_HF'], label='MACD(5,35,5)')
-            plt.plot(data.index, data['MACD_HF_Signal'], label='Signal')
-            plt.bar(data.index, data['MACD_HF_Histogram'], color='gray', alpha=0.3, label='Histogram')
-            plt.title('High-Frequency MACD')
-        elif strategy == "momentum" and 'STOCH_K' in data.columns and 'STOCH_D' in data.columns:
-            plt.plot(data.index, data['STOCH_K'], label='%K')
-            plt.plot(data.index, data['STOCH_D'], label='%D')
-            plt.axhline(y=80, color='r', linestyle='-', alpha=0.3)
-            plt.axhline(y=20, color='g', linestyle='-', alpha=0.3)
-            plt.title('Stochastic Oscillator')
-        else:
-            plt.plot(data.index, data['MACD'], label='MACD(12,26,9)')
-            plt.plot(data.index, data['MACD_Signal'], label='Signal')
-            plt.bar(data.index, data['MACD_Histogram'], color='gray', alpha=0.3, label='Histogram')
-            plt.title('MACD')
-            
-        plt.legend()
-        plt.grid(True)
-        
-        plt.tight_layout()
-        
-        # Save the chart
-        chart1_filename = f"{symbol}_indicators_{chart_date}.png"
-        chart1_path = os.path.join(output_dir, chart1_filename)
-        plt.savefig(chart1_path)
-        plt.close()
-        chart_files.append(chart1_path)
-        
-        # Plot 2: Volatility indicators based on strategy
-        plt.figure(figsize=(12, 6))
-        plt.plot(data.index, data['Close'], label='Close Price')
-        
-        if strategy == "tight_channel" and all(col in data.columns for col in ['BB_Tight_High', 'BB_Tight_Mid', 'BB_Tight_Low']):
-            # Tight channel Bollinger Bands
-            plt.plot(data.index, data['BB_Tight_High'], label='BB Upper (14, 1.5σ)')
-            plt.plot(data.index, data['BB_Tight_Mid'], label='BB Middle (14)')
-            plt.plot(data.index, data['BB_Tight_Low'], label='BB Lower (14, 1.5σ)')
-            plt.fill_between(data.index, data['BB_Tight_High'], data['BB_Tight_Low'], alpha=0.1)
-            plt.title(f'{symbol} Tight Channel Bollinger Bands (14, 1.5σ)')
-        elif strategy == "wide_channel" and all(col in data.columns for col in ['BB_Wide_High', 'BB_Wide_Mid', 'BB_Wide_Low']):
-            # Wide channel Bollinger Bands
-            plt.plot(data.index, data['BB_Wide_High'], label='BB Upper (30, 2.5σ)')
-            plt.plot(data.index, data['BB_Wide_Mid'], label='BB Middle (30)')
-            plt.plot(data.index, data['BB_Wide_Low'], label='BB Lower (30, 2.5σ)')
-            plt.fill_between(data.index, data['BB_Wide_High'], data['BB_Wide_Low'], alpha=0.1)
-            plt.title(f'{symbol} Wide Channel Bollinger Bands (30, 2.5σ)')
-        elif strategy == "volatility":
-            # Bollinger Bands
-            plt.plot(data.index, data['BB_High'], label='BB Upper')
-            plt.plot(data.index, data['BB_Low'], label='BB Lower')
-            plt.fill_between(data.index, data['BB_High'], data['BB_Low'], alpha=0.1, color='blue')
-            
-            plt.title(f'{symbol} Bollinger Bands')
-        else:
-            # Default Bollinger Bands
-            plt.plot(data.index, data['BB_High'], label='BB Upper (20, 2σ)')
-            plt.plot(data.index, data['BB_Mid'], label='BB Middle (20)')
-            plt.plot(data.index, data['BB_Low'], label='BB Lower (20, 2σ)')
-            plt.fill_between(data.index, data['BB_High'], data['BB_Low'], alpha=0.1)
-            plt.title(f'{symbol} Bollinger Bands (20, 2σ)')
-            
-        plt.legend()
-        plt.grid(True)
-        plt.tight_layout()
-        
-        # Save the chart
-        chart2_filename = f"{symbol}_bollinger_{chart_date}.png"
-        chart2_path = os.path.join(output_dir, chart2_filename)
-        plt.savefig(chart2_path)
-        plt.close()
-        chart_files.append(chart2_path)
-        
-        # Plot 3: Ichimoku Cloud chart if selected
-        if strategy == "ichimoku" and 'Ichimoku_SpanA' in data.columns and 'Ichimoku_SpanB' in data.columns:
-            try:
-                plt.figure(figsize=(12, 8))
-                
-                # 首先确保所有需要的列的索引对齐
-                ichimoku_columns = ['Close', 'Ichimoku_Tenkan', 'Ichimoku_Kijun', 'Ichimoku_SpanA', 'Ichimoku_SpanB']
-                # 过滤出所有在数据中存在的列
-                valid_columns = [col for col in ichimoku_columns if col in data.columns]
-                
-                # 创建一个临时数据框，包含所有需要的列，确保所有列共享相同的索引
-                ichimoku_data = pd.DataFrame({col: data[col] for col in valid_columns})
-                
-                # 删除包含任何NaN值的行，避免绘图错误
-                ichimoku_data = ichimoku_data.dropna(subset=['Ichimoku_SpanA', 'Ichimoku_SpanB'])
-                
-                # 确保数据不为空
-                if len(ichimoku_data) > 0:
-                    # Subplot 1: Price with Ichimoku Cloud
-                    plt.subplot(2, 1, 1)
-                    
-                    # 修复一目均衡图绘制，使用更安全的绘图方式，避免索引对齐问题
-                    # 使用布尔掩码预先计算比较结果，避免在fill_between中直接比较
-                    comparison_mask = ichimoku_data['Ichimoku_SpanA'] >= ichimoku_data['Ichimoku_SpanB']
-                    
-                    # 为绿色区域绘制(SpanA >= SpanB)
-                    plt.fill_between(
-                        ichimoku_data.index, 
-                        ichimoku_data['Ichimoku_SpanA'].values, 
-                        ichimoku_data['Ichimoku_SpanB'].values, 
-                        where=comparison_mask.values,  # 使用预计算的布尔掩码
-                        color='lightgreen', alpha=0.3
-                    )
-                    
-                    # 为红色区域绘制(SpanA < SpanB) 
-                    plt.fill_between(
-                        ichimoku_data.index, 
-                        ichimoku_data['Ichimoku_SpanA'].values, 
-                        ichimoku_data['Ichimoku_SpanB'].values, 
-                        where=~comparison_mask.values,  # 使用预计算的布尔掩码的反面
-                        color='lightcoral', alpha=0.3
-                    )
-                    
-                    # Plot price and Ichimoku components
-                    plt.plot(ichimoku_data.index, ichimoku_data['Close'], label='Close', color='black')
-                    plt.plot(ichimoku_data.index, ichimoku_data['Ichimoku_Tenkan'], label='Tenkan-sen (9)', color='red')
-                    plt.plot(ichimoku_data.index, ichimoku_data['Ichimoku_Kijun'], label='Kijun-sen (26)', color='blue')
-                    plt.plot(ichimoku_data.index, ichimoku_data['Ichimoku_SpanA'], label='Span A', color='green')
-                    plt.plot(ichimoku_data.index, ichimoku_data['Ichimoku_SpanB'], label='Span B', color='red', alpha=0.5)
-                    
-                    # If we have Chikou Span (lagging line), plot it
-                    if 'Ichimoku_Chikou' in data.columns:
-                        # 确保有数据可用
-                        chikou_data = pd.DataFrame({'Ichimoku_Chikou': data['Ichimoku_Chikou']})
-                        chikou_valid = chikou_data.dropna()
-                        if len(chikou_valid) > 0:
-                            plt.plot(chikou_valid.index, chikou_valid['Ichimoku_Chikou'], label='Chikou Span', color='purple')
-                    
-                    plt.title(f'{symbol} Ichimoku Cloud')
-                    plt.legend()
-                    plt.grid(True)
-                    
-                    # Subplot 2: Parabolic SAR and On-Balance Volume
-                    plt.subplot(2, 1, 2)
-                    
-                    # 创建临时DataFrame用于绘制SAR和OBV
-                    plot_data = data[['Close']].copy()
-                    if 'SAR' in data.columns:
-                        plot_data['SAR'] = data['SAR']
-                    if 'OBV' in data.columns:
-                        plot_data['OBV'] = data['OBV']
-                    if 'OBV_MA' in data.columns:
-                        plot_data['OBV_MA'] = data['OBV_MA']
-                    
-                    # 删除有NaN的行
-                    plot_data = plot_data.dropna()
-                    
-                    # Twin axes for price and OBV
-                    ax1 = plt.gca()
-                    ax2 = ax1.twinx()
-                    
-                    # Plot price and SAR on primary axis (if SAR exists)
-                    ax1.plot(plot_data.index, plot_data['Close'], label='Close', color='black', alpha=0.5)
-                    if 'SAR' in plot_data.columns:
-                        ax1.scatter(plot_data.index, plot_data['SAR'], label='SAR', marker='.', color='blue', s=15)
-                    
-                    # Plot OBV and its MA on secondary axis (if they exist)
-                    if 'OBV' in plot_data.columns:
-                        ax2.plot(plot_data.index, plot_data['OBV'], label='OBV', color='purple', alpha=0.7)
-                    if 'OBV_MA' in plot_data.columns:
-                        ax2.plot(plot_data.index, plot_data['OBV_MA'], label='OBV MA(20)', color='orange')
-                    
-                    # Set labels and legend
-                    ax1.set_ylabel('Price', color='black')
-                    ax2.set_ylabel('OBV', color='purple')
-                    
-                    # Add legends for both axes
-                    lines1, labels1 = ax1.get_legend_handles_labels()
-                    lines2, labels2 = ax2.get_legend_handles_labels()
-                    ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left')
-                    
-                    plt.title(f'{symbol} Parabolic SAR and On-Balance Volume')
-                    ax1.grid(True)
-                    
-                    plt.tight_layout()
-                    
-                    # Save the Ichimoku chart
-                    chart3_filename = f"{symbol}_ichimoku_{chart_date}.png"
-                    chart3_path = os.path.join(output_dir, chart3_filename)
-                    plt.savefig(chart3_path)
-                    plt.close()
-                    chart_files.append(chart3_path)
-            except Exception as e:
-                print(f"Error creating Ichimoku chart: {e}")
-                # Continue with other charts even if Ichimoku fails
-                
-        # Plot 4: Strategy combination chart for trend following, momentum, or volatility
+        # Generate strategy-specific combination charts
         if strategy in ["trend_following", "momentum", "volatility"]:
-            plt.figure(figsize=(12, 8))
-            
-            if strategy == "trend_following":
-                # Trend Following Combo: SMA(50,200) + EMA(12,26) + ADX(14)
-                plt.subplot(3, 1, 1)
-                plt.plot(data.index, data['Close'], label='Close', color='black')
-                plt.plot(data.index, data['SMA50'], label='SMA50', color='blue')
-                plt.plot(data.index, data['SMA200'], label='SMA200', color='red')
-                plt.title(f'{symbol} - SMA50/200 Golden/Death Cross')
-                plt.legend()
-                plt.grid(True)
-                
-                plt.subplot(3, 1, 2)
-                plt.plot(data.index, data['Close'], label='Close', color='black')
-                plt.plot(data.index, data['EMA12'], label='EMA12', color='green')
-                plt.plot(data.index, data['EMA26'], label='EMA26', color='purple')
-                plt.title(f'{symbol} - EMA12/26 Crossover')
-                plt.legend()
-                plt.grid(True)
-                
-                plt.subplot(3, 1, 3)
-                plt.plot(data.index, data['ADX'], label='ADX(14)', color='orange')
-                plt.axhline(y=25, color='r', linestyle='--', alpha=0.7, label='Strong Trend')
-                plt.axhline(y=20, color='y', linestyle='--', alpha=0.7, label='Moderate Trend')
-                plt.title(f'{symbol} - ADX Trend Strength')
-                plt.legend()
-                plt.grid(True)
-                
-                chart4_filename = f"{symbol}_trend_strategy_{chart_date}.png"
-                
-            elif strategy == "momentum":
-                # Momentum Validation Combo: RSI(14) + MACD(12,26,9) + Stochastic(14,3)
-                plt.subplot(3, 1, 1)
-                plt.plot(data.index, data['RSI'], label='RSI(14)')
-                plt.axhline(y=70, color='r', linestyle='--', alpha=0.7, label='Overbought')
-                plt.axhline(y=30, color='g', linestyle='--', alpha=0.7, label='Oversold')
-                plt.title(f'{symbol} - RSI(14)')
-                plt.legend()
-                plt.grid(True)
-                
-                plt.subplot(3, 1, 2)
-                plt.plot(data.index, data['MACD'], label='MACD', color='blue')
-                plt.plot(data.index, data['MACD_Signal'], label='Signal', color='red')
-                plt.bar(data.index, data['MACD_Histogram'], color='gray', alpha=0.5, label='Histogram')
-                plt.title(f'{symbol} - MACD(12,26,9)')
-                plt.legend()
-                plt.grid(True)
-                
-                plt.subplot(3, 1, 3)
-                plt.plot(data.index, data['STOCH_K'], label='%K', color='green')
-                plt.plot(data.index, data['STOCH_D'], label='%D', color='red')
-                plt.axhline(y=80, color='r', linestyle='--', alpha=0.7, label='Overbought')
-                plt.axhline(y=20, color='g', linestyle='--', alpha=0.7, label='Oversold')
-                plt.title(f'{symbol} - Stochastic(14,3)')
-                plt.legend()
-                plt.grid(True)
-                
-                chart4_filename = f"{symbol}_momentum_strategy_{chart_date}.png"
-                
-            elif strategy == "volatility":
-                # Volatility Trading Combo: Bollinger Bands
-                plt.subplot(3, 1, 1)
-                plt.plot(data.index, data['Close'], label='Close', color='black')
-                plt.plot(data.index, data['BB_High'], label='BB Upper', color='blue')
-                plt.plot(data.index, data['BB_Mid'], label='BB Middle', color='blue', linestyle='--')
-                plt.plot(data.index, data['BB_Low'], label='BB Lower', color='blue')
-                plt.fill_between(data.index, data['BB_High'], data['BB_Low'], alpha=0.1, color='blue')
-                plt.title(f'{symbol} - Bollinger Bands(20,2)')
-                plt.legend()
-                plt.grid(True)
-                
-                chart4_filename = f"{symbol}_volatility_strategy_{chart_date}.png"
-            
-            plt.tight_layout()
-            chart4_path = os.path.join(output_dir, chart4_filename)
-            plt.savefig(chart4_path)
-            plt.close()
-            chart_files.append(chart4_path)
+            strategy_chart_path = generate_strategy_chart(
+                data, symbol, output_dir, chart_date, strategy, styles
+            )
+            if strategy_chart_path:
+                chart_files.append(strategy_chart_path)
         
     except Exception as e:
         print(f"Error generating charts: {str(e)}")
@@ -447,19 +256,11 @@ def plot_indicators(data, symbol, output_dir, chart_date=None, strategy="default
         traceback.print_exc()
         # Create a simple error chart as a fallback
         try:
-            plt.figure(figsize=(10, 6))
-            plt.plot(data.index, data['Close'], 'b-', label='Price')
-            plt.title(f"{symbol} Price Chart (Error in full chart generation)")
-            plt.grid(True)
-            plt.legend()
-            
-            # Save the fallback chart
-            fallback_filename = f"{symbol}_basic_{chart_date}.png"
-            fallback_path = os.path.join(output_dir, fallback_filename)
-            plt.savefig(fallback_path)
-            plt.close()
-            chart_files.append(fallback_path)
-            print(f"Created fallback chart: {fallback_path}")
+            fallback_path = generate_fallback_chart(
+                data, symbol, output_dir, chart_date
+            )
+            if fallback_path:
+                chart_files.append(fallback_path)
         except Exception as fallback_error:
             print(f"Failed to create even fallback chart: {str(fallback_error)}")
     
@@ -468,6 +269,361 @@ def plot_indicators(data, symbol, output_dir, chart_date=None, strategy="default
     
     print(f"Charts saved to {output_dir}")
     return chart_files
+
+def generate_indicator_chart(data, symbol, output_dir, chart_date, strategy, config, styles):
+    """Helper function to generate the main indicator chart with price, MAs, RSI/ADX, and MACD/Stoch"""
+    plt.figure(figsize=(12, 8))
+    
+    # Price with Moving Averages plot
+    plt.subplot(3, 1, 1)
+    plt.plot(data.index, data['Close'], label='Close Price', color=styles["colors"]["price"])
+    
+    # Plot moving averages based on strategy configuration
+    for ma in config.get("moving_averages", []):
+        if ma in data.columns:
+            color = styles["colors"]["sma"] if ma.startswith("SMA") else styles["colors"]["ema"]
+            plt.plot(data.index, data[ma], label=ma, color=color)
+    
+    plt.title(f'{symbol} Price with Moving Averages - {config.get("title", "")}')
+    plt.legend()
+    plt.grid(True)
+    
+    # Second plot: RSI or ADX based on configuration
+    plt.subplot(3, 1, 2)
+    oscillators = config.get("oscillators", [])
+    
+    if "ADX" in oscillators and "ADX" in data.columns:
+        plt.plot(data.index, data['ADX'], label='ADX(14)', color=styles["colors"]["adx"])
+        plt.axhline(y=styles["thresholds"]["adx_strong"], color='r', linestyle='--', alpha=0.7, label='Strong Trend')
+        plt.axhline(y=styles["thresholds"]["adx_moderate"], color='y', linestyle='--', alpha=0.7, label='Moderate Trend')
+        plt.title('ADX - Trend Strength')
+    elif "RSI7" in oscillators and "RSI7" in data.columns:
+        plt.plot(data.index, data['RSI7'], label='RSI(7)', color=styles["colors"]["rsi"])
+        plt.axhline(y=styles["thresholds"]["rsi_upper"], color='r', linestyle='--', alpha=0.7)
+        plt.axhline(y=styles["thresholds"]["rsi_lower"], color='g', linestyle='--', alpha=0.7)
+        plt.title('RSI(7)')
+    else:
+        rsi_col = [col for col in data.columns if col.startswith('RSI') and col != 'RSI7']
+        if rsi_col and rsi_col[0] in data.columns:
+            plt.plot(data.index, data[rsi_col[0]], label=rsi_col[0], color=styles["colors"]["rsi"])
+            plt.axhline(y=styles["thresholds"]["rsi_upper"], color='r', linestyle='--', alpha=0.7)
+            plt.axhline(y=styles["thresholds"]["rsi_lower"], color='g', linestyle='--', alpha=0.7)
+            plt.title(f'{rsi_col[0]}')
+    
+    plt.legend()
+    plt.grid(True)
+    
+    # Third plot: MACD or Stochastic
+    plt.subplot(3, 1, 3)
+    
+    if "STOCH_K" in oscillators and "STOCH_D" in oscillators and all(col in data.columns for col in ['STOCH_K', 'STOCH_D']):
+        plt.plot(data.index, data['STOCH_K'], label='%K', color=styles["colors"]["stoch_k"])
+        plt.plot(data.index, data['STOCH_D'], label='%D', color=styles["colors"]["stoch_d"])
+        plt.axhline(y=styles["thresholds"]["stoch_upper"], color='r', linestyle='--', alpha=0.7)
+        plt.axhline(y=styles["thresholds"]["stoch_lower"], color='g', linestyle='--', alpha=0.7)
+        plt.title('Stochastic Oscillator')
+    elif "MACD_HF" in oscillators and all(col in data.columns for col in ['MACD_HF', 'MACD_HF_Signal', 'MACD_HF_Histogram']):
+        plt.plot(data.index, data['MACD_HF'], label='MACD(5,35,5)', color=styles["colors"]["macd"])
+        plt.plot(data.index, data['MACD_HF_Signal'], label='Signal', color=styles["colors"]["signal"])
+        plt.bar(data.index, data['MACD_HF_Histogram'], color='gray', alpha=styles["alpha"]["histogram"], label='Histogram')
+        plt.title('High-Frequency MACD')
+    else:
+        if all(col in data.columns for col in ['MACD', 'MACD_Signal', 'MACD_Histogram']):
+            plt.plot(data.index, data['MACD'], label='MACD(12,26,9)', color=styles["colors"]["macd"])
+            plt.plot(data.index, data['MACD_Signal'], label='Signal', color=styles["colors"]["signal"])
+            
+            # Color-coded histogram
+            colors = [styles["colors"]["histogram_positive"] if val > 0 else styles["colors"]["histogram_negative"] 
+                     for val in data['MACD_Histogram']]
+            plt.bar(data.index, data['MACD_Histogram'], color=colors, alpha=styles["alpha"]["histogram"], label='Histogram')
+            plt.title('MACD')
+    
+    plt.legend()
+    plt.grid(True)
+    
+    plt.tight_layout()
+    
+    # Save the chart
+    chart_filename = f"{symbol}_indicators_{chart_date}.png"
+    chart_path = os.path.join(output_dir, chart_filename)
+    plt.savefig(chart_path)
+    plt.close()
+    
+    return chart_path
+
+def generate_bollinger_chart(data, symbol, output_dir, chart_date, strategy, config, styles):
+    """Helper function to generate the Bollinger Bands chart"""
+    plt.figure(figsize=(12, 6))
+    plt.plot(data.index, data['Close'], label='Close Price', color=styles["colors"]["price"])
+    
+    bands = config.get("bands", [])
+    
+    # High, Mid, Low band column names based on strategy
+    high_band = next((band for band in bands if "High" in band), "BB_High")
+    mid_band = next((band for band in bands if "Mid" in band), "BB_Mid")
+    low_band = next((band for band in bands if "Low" in band), "BB_Low")
+    
+    if all(band in data.columns for band in [high_band, mid_band, low_band]):
+        plt.plot(data.index, data[high_band], label=high_band, color=styles["colors"]["bb_upper"])
+        plt.plot(data.index, data[mid_band], label=mid_band, color=styles["colors"]["bb_mid"], linestyle='--')
+        plt.plot(data.index, data[low_band], label=low_band, color=styles["colors"]["bb_lower"])
+        plt.fill_between(data.index, data[high_band], data[low_band], alpha=styles["alpha"]["fill"])
+        
+        if "tight" in strategy:
+            plt.title(f'{symbol} Tight Channel Bollinger Bands (14, 1.5σ)')
+        elif "wide" in strategy:
+            plt.title(f'{symbol} Wide Channel Bollinger Bands (30, 2.5σ)')
+        else:
+            plt.title(f'{symbol} Bollinger Bands (20, 2σ)')
+    
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    
+    # Save the chart
+    chart_filename = f"{symbol}_bollinger_{chart_date}.png"
+    chart_path = os.path.join(output_dir, chart_filename)
+    plt.savefig(chart_path)
+    plt.close()
+    
+    return chart_path
+
+def has_ichimoku_data(data):
+    """Check if data contains Ichimoku cloud components"""
+    required_columns = ['Ichimoku_SpanA', 'Ichimoku_SpanB']
+    return all(col in data.columns for col in required_columns)
+
+def generate_ichimoku_chart(data, symbol, output_dir, chart_date, styles):
+    """Helper function to generate the Ichimoku Cloud chart"""
+    try:
+        plt.figure(figsize=(12, 8))
+        
+        # Create a DataFrame with only the columns we need, ensuring they share the same index
+        ichimoku_columns = ['Close', 'Ichimoku_Tenkan', 'Ichimoku_Kijun', 'Ichimoku_SpanA', 'Ichimoku_SpanB']
+        valid_columns = [col for col in ichimoku_columns if col in data.columns]
+        
+        # Create a temporary dataframe with valid columns and drop any rows with NaN values
+        ichimoku_data = pd.DataFrame({col: data[col] for col in valid_columns})
+        ichimoku_data = ichimoku_data.dropna(subset=['Ichimoku_SpanA', 'Ichimoku_SpanB'])
+        
+        if len(ichimoku_data) > 0:
+            # Subplot 1: Price with Ichimoku Cloud
+            plt.subplot(2, 1, 1)
+            
+            # Pre-compute comparison mask for fill_between
+            comparison_mask = ichimoku_data['Ichimoku_SpanA'] >= ichimoku_data['Ichimoku_SpanB']
+            
+            # Fill green area (SpanA >= SpanB)
+            plt.fill_between(
+                ichimoku_data.index, 
+                ichimoku_data['Ichimoku_SpanA'].values, 
+                ichimoku_data['Ichimoku_SpanB'].values, 
+                where=comparison_mask.values,
+                color='lightgreen', alpha=0.3
+            )
+            
+            # Fill red area (SpanA < SpanB)
+            plt.fill_between(
+                ichimoku_data.index, 
+                ichimoku_data['Ichimoku_SpanA'].values, 
+                ichimoku_data['Ichimoku_SpanB'].values, 
+                where=~comparison_mask.values,
+                color='lightcoral', alpha=0.3
+            )
+            
+            # Plot price and Ichimoku components
+            plt.plot(ichimoku_data.index, ichimoku_data['Close'], 
+                    label='Close', color=styles["colors"]["price"])
+            plt.plot(ichimoku_data.index, ichimoku_data['Ichimoku_Tenkan'], 
+                    label='Tenkan-sen (9)', color=styles["colors"]["ichimoku_tenkan"])
+            plt.plot(ichimoku_data.index, ichimoku_data['Ichimoku_Kijun'], 
+                    label='Kijun-sen (26)', color=styles["colors"]["ichimoku_kijun"])
+            plt.plot(ichimoku_data.index, ichimoku_data['Ichimoku_SpanA'], 
+                    label='Span A', color=styles["colors"]["ichimoku_spana"])
+            plt.plot(ichimoku_data.index, ichimoku_data['Ichimoku_SpanB'], 
+                    label='Span B', color=styles["colors"]["ichimoku_spanb"], alpha=0.5)
+            
+            # Plot Chikou Span if available
+            if 'Ichimoku_Chikou' in data.columns:
+                chikou_data = pd.DataFrame({'Ichimoku_Chikou': data['Ichimoku_Chikou']})
+                chikou_valid = chikou_data.dropna()
+                if len(chikou_valid) > 0:
+                    plt.plot(chikou_valid.index, chikou_valid['Ichimoku_Chikou'], 
+                            label='Chikou Span', color=styles["colors"]["ichimoku_chikou"])
+            
+            plt.title(f'{symbol} Ichimoku Cloud')
+            plt.legend()
+            plt.grid(True)
+            
+            # Subplot 2: SAR and OBV
+            plt.subplot(2, 1, 2)
+            
+            # Create a dataframe for SAR and OBV plotting
+            plot_data = data[['Close']].copy()
+            secondary_indicators = ["SAR", "OBV", "OBV_MA"]
+            for indicator in secondary_indicators:
+                if indicator in data.columns:
+                    plot_data[indicator] = data[indicator]
+            
+            plot_data = plot_data.dropna()
+            
+            # Twin axes for price and OBV
+            ax1 = plt.gca()
+            ax2 = ax1.twinx()
+            
+            # Plot price and SAR on primary axis
+            ax1.plot(plot_data.index, plot_data['Close'], label='Close', color=styles["colors"]["price"], alpha=0.5)
+            if 'SAR' in plot_data.columns:
+                ax1.scatter(plot_data.index, plot_data['SAR'], label='SAR', marker='.', color=styles["colors"]["sar"], s=15)
+            
+            # Plot OBV and OBV MA on secondary axis
+            if 'OBV' in plot_data.columns:
+                ax2.plot(plot_data.index, plot_data['OBV'], label='OBV', color=styles["colors"]["obv"], alpha=0.7)
+            if 'OBV_MA' in plot_data.columns:
+                ax2.plot(plot_data.index, plot_data['OBV_MA'], label='OBV MA(20)', color=styles["colors"]["obv_ma"])
+            
+            # Set labels and legend
+            ax1.set_ylabel('Price', color='black')
+            ax2.set_ylabel('OBV', color=styles["colors"]["obv"])
+            
+            # Add legends for both axes
+            lines1, labels1 = ax1.get_legend_handles_labels()
+            lines2, labels2 = ax2.get_legend_handles_labels()
+            ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left')
+            
+            plt.title(f'{symbol} Parabolic SAR and On-Balance Volume')
+            ax1.grid(True)
+            
+            plt.tight_layout()
+            
+            # Save the Ichimoku chart
+            chart_filename = f"{symbol}_ichimoku_{chart_date}.png"
+            chart_path = os.path.join(output_dir, chart_filename)
+            plt.savefig(chart_path)
+            plt.close()
+            return chart_path
+        else:
+            print("No valid Ichimoku data available after filtering NaN values")
+            return None
+    
+    except Exception as e:
+        print(f"Error creating Ichimoku chart: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+def generate_strategy_chart(data, symbol, output_dir, chart_date, strategy, styles):
+    """Helper function to generate strategy-specific combination charts"""
+    plt.figure(figsize=(12, 8))
+    
+    if strategy == "trend_following":
+        # Trend Following Combo: SMA(50,200) + EMA(12,26) + ADX(14)
+        plt.subplot(3, 1, 1)
+        plt.plot(data.index, data['Close'], label='Close', color=styles["colors"]["price"])
+        plt.plot(data.index, data['SMA50'], label='SMA50', color='blue')
+        plt.plot(data.index, data['SMA200'], label='SMA200', color='red')
+        plt.title(f'{symbol} - SMA50/200 Golden/Death Cross')
+        plt.legend()
+        plt.grid(True)
+        
+        plt.subplot(3, 1, 2)
+        plt.plot(data.index, data['Close'], label='Close', color=styles["colors"]["price"])
+        plt.plot(data.index, data['EMA12'], label='EMA12', color='green')
+        plt.plot(data.index, data['EMA26'], label='EMA26', color='purple')
+        plt.title(f'{symbol} - EMA12/26 Crossover')
+        plt.legend()
+        plt.grid(True)
+        
+        plt.subplot(3, 1, 3)
+        plt.plot(data.index, data['ADX'], label='ADX(14)', color=styles["colors"]["adx"])
+        plt.axhline(y=styles["thresholds"]["adx_strong"], color='r', linestyle='--', alpha=0.7, label='Strong Trend')
+        plt.axhline(y=styles["thresholds"]["adx_moderate"], color='y', linestyle='--', alpha=0.7, label='Moderate Trend')
+        plt.title(f'{symbol} - ADX Trend Strength')
+        plt.legend()
+        plt.grid(True)
+        
+        chart_filename = f"{symbol}_trend_strategy_{chart_date}.png"
+        
+    elif strategy == "momentum":
+        # Momentum Validation Combo: RSI(14) + MACD(12,26,9) + Stochastic(14,3)
+        plt.subplot(3, 1, 1)
+        plt.plot(data.index, data['RSI'], label='RSI(14)', color=styles["colors"]["rsi"])
+        plt.axhline(y=styles["thresholds"]["rsi_upper"], color='r', linestyle='--', alpha=0.7, label='Overbought')
+        plt.axhline(y=styles["thresholds"]["rsi_lower"], color='g', linestyle='--', alpha=0.7, label='Oversold')
+        plt.title(f'{symbol} - RSI(14)')
+        plt.legend()
+        plt.grid(True)
+        
+        plt.subplot(3, 1, 2)
+        plt.plot(data.index, data['MACD'], label='MACD', color=styles["colors"]["macd"])
+        plt.plot(data.index, data['MACD_Signal'], label='Signal', color=styles["colors"]["signal"])
+        plt.bar(data.index, data['MACD_Histogram'], color='gray', alpha=styles["alpha"]["histogram"], label='Histogram')
+        plt.title(f'{symbol} - MACD(12,26,9)')
+        plt.legend()
+        plt.grid(True)
+        
+        plt.subplot(3, 1, 3)
+        plt.plot(data.index, data['STOCH_K'], label='%K', color=styles["colors"]["stoch_k"])
+        plt.plot(data.index, data['STOCH_D'], label='%D', color=styles["colors"]["stoch_d"])
+        plt.axhline(y=styles["thresholds"]["stoch_upper"], color='r', linestyle='--', alpha=0.7, label='Overbought')
+        plt.axhline(y=styles["thresholds"]["stoch_lower"], color='g', linestyle='--', alpha=0.7, label='Oversold')
+        plt.title(f'{symbol} - Stochastic(14,3)')
+        plt.legend()
+        plt.grid(True)
+        
+        chart_filename = f"{symbol}_momentum_strategy_{chart_date}.png"
+        
+    elif strategy == "volatility":
+        # Volatility Trading Combo: Bollinger Bands
+        plt.subplot(3, 1, 1)
+        plt.plot(data.index, data['Close'], label='Close', color=styles["colors"]["price"])
+        plt.plot(data.index, data['BB_High'], label='BB Upper', color=styles["colors"]["bb_upper"])
+        plt.plot(data.index, data['BB_Mid'], label='BB Middle', color=styles["colors"]["bb_mid"], linestyle='--')
+        plt.plot(data.index, data['BB_Low'], label='BB Lower', color=styles["colors"]["bb_lower"])
+        plt.fill_between(data.index, data['BB_High'], data['BB_Low'], alpha=styles["alpha"]["fill"], color='blue')
+        plt.title(f'{symbol} - Bollinger Bands(20,2)')
+        plt.legend()
+        plt.grid(True)
+        
+        # Add additional volatility indicators if available
+        if 'ATR' in data.columns:
+            plt.subplot(3, 1, 2)
+            plt.plot(data.index, data['ATR'], label='ATR(14)', color='purple')
+            plt.title(f'{symbol} - Average True Range')
+            plt.legend()
+            plt.grid(True)
+            
+            # Add normalized ATR as percentage of price
+            if 'ATR_Percent' in data.columns:
+                plt.subplot(3, 1, 3)
+                plt.plot(data.index, data['ATR_Percent'], label='ATR%', color='green')
+                plt.title(f'{symbol} - ATR as % of Price')
+                plt.legend()
+                plt.grid(True)
+        
+        chart_filename = f"{symbol}_volatility_strategy_{chart_date}.png"
+    
+    plt.tight_layout()
+    chart_path = os.path.join(output_dir, chart_filename)
+    plt.savefig(chart_path)
+    plt.close()
+    return chart_path
+
+def generate_fallback_chart(data, symbol, output_dir, chart_date):
+    """Generate a simple price chart as fallback when full chart generation fails"""
+    plt.figure(figsize=(10, 6))
+    plt.plot(data.index, data['Close'], 'b-', label='Price')
+    plt.title(f"{symbol} Price Chart (Fallback Chart)")
+    plt.grid(True)
+    plt.legend()
+    
+    # Save the fallback chart
+    fallback_filename = f"{symbol}_basic_{chart_date}.png"
+    fallback_path = os.path.join(output_dir, fallback_filename)
+    plt.savefig(fallback_path)
+    plt.close()
+    print(f"Created fallback chart: {fallback_path}")
+    return fallback_path
 
 def plot_interactive_indicators(data, symbol, output_dir, chart_date=None):
     """
@@ -487,66 +643,59 @@ def plot_interactive_indicators(data, symbol, output_dir, chart_date=None):
         chart_date = datetime.now().strftime("%Y%m%d")
     
     try:
-        # 临时注释掉可能导致维度问题的代码，直接使用现有数据而不是重建
-        
-        # 创建subplot
+        # Create subplot
         fig = make_subplots(rows=3, cols=1, 
                          shared_xaxes=True,
                          vertical_spacing=0.05,
                          row_heights=[0.5, 0.25, 0.25],
                          subplot_titles=('Price with Moving Averages', 'RSI', 'MACD'))
         
-        # 添加价格和移动平均线到第1行 - 直接使用原始数据列，不重建
-        fig.add_trace(go.Scatter(x=data.index, y=data['Close'], name='Price', line=dict(color='black')), row=1, col=1)
+        # Add price and moving averages to row 1
+        fig.add_trace(go.Scatter(x=data.index, y=data['Close'], name='Price', line=dict(color=CHART_STYLES["colors"]["price"])), row=1, col=1)
         
-        if 'SMA20' in data.columns:
-            fig.add_trace(go.Scatter(x=data.index, y=data['SMA20'], name='SMA20', line=dict(color='blue')), row=1, col=1)
-            
-        if 'SMA50' in data.columns:
-            fig.add_trace(go.Scatter(x=data.index, y=data['SMA50'], name='SMA50', line=dict(color='orange')), row=1, col=1)
-            
-        if 'SMA200' in data.columns:
-            fig.add_trace(go.Scatter(x=data.index, y=data['SMA200'], name='SMA200', line=dict(color='red')), row=1, col=1)
+        # Add moving averages
+        for ma in ['SMA20', 'SMA50', 'SMA200']:
+            if ma in data.columns:
+                fig.add_trace(go.Scatter(x=data.index, y=data[ma], name=ma, line=dict(color=CHART_STYLES["colors"]["sma"])), row=1, col=1)
         
-        # 添加RSI到第2行
+        # Add RSI to row 2
         if 'RSI' in data.columns:
-            fig.add_trace(go.Scatter(x=data.index, y=data['RSI'], name='RSI', line=dict(color='purple')), row=2, col=1)
+            fig.add_trace(go.Scatter(x=data.index, y=data['RSI'], name='RSI', line=dict(color=CHART_STYLES["colors"]["rsi"])), row=2, col=1)
             
-            # 添加RSI的过度买入/卖出线
+            # Add RSI overbought/oversold lines
             fig.add_shape(type="line", x0=data.index[0], x1=data.index[-1], y0=70, y1=70,
                        line=dict(color="red", width=2, dash="dash"), row=2, col=1)
             fig.add_shape(type="line", x0=data.index[0], x1=data.index[-1], y0=30, y1=30,
                        line=dict(color="green", width=2, dash="dash"), row=2, col=1)
         
-        # 添加MACD到第3行
+        # Add MACD to row 3
         if all(col in data.columns for col in ['MACD', 'MACD_Signal', 'MACD_Histogram']):
-            fig.add_trace(go.Scatter(x=data.index, y=data['MACD'], name='MACD', line=dict(color='blue')), row=3, col=1)
-            fig.add_trace(go.Scatter(x=data.index, y=data['MACD_Signal'], name='Signal', line=dict(color='red')), row=3, col=1)
+            fig.add_trace(go.Scatter(x=data.index, y=data['MACD'], name='MACD', line=dict(color=CHART_STYLES["colors"]["macd"])), row=3, col=1)
+            fig.add_trace(go.Scatter(x=data.index, y=data['MACD_Signal'], name='Signal', line=dict(color=CHART_STYLES["colors"]["signal"])), row=3, col=1)
             
-            # 绘制MACD直方图
+            # Create MACD histogram with custom colors
             try:
-                # 安全获取MACD直方图值并处理可能的2D数组
+                # Safely get MACD histogram values and handle potential 2D arrays
                 macd_hist_vals = data['MACD_Histogram']
                 if hasattr(macd_hist_vals, 'values'):
                     macd_hist_vals = macd_hist_vals.values
                 
-                # 确保是扁平的1D数组
+                # Ensure it's a flat 1D array
                 macd_hist_vals = np.asarray(macd_hist_vals).flatten()
                 
-                # 创建自定义颜色
-                colors = ['green' if val > 0 else 'red' for val in macd_hist_vals]
+                # Create custom colors
+                colors = [CHART_STYLES["colors"]["histogram_positive"] if val > 0 else CHART_STYLES["colors"]["histogram_negative"] for val in macd_hist_vals]
                 
                 fig.add_trace(go.Bar(
                     x=data.index, 
-                    y=macd_hist_vals,  # 使用展平后的数据
+                    y=macd_hist_vals,
                     name='Histogram', 
-                    marker=dict(color=colors, opacity=0.5)
+                    marker=dict(color=colors, opacity=CHART_STYLES["alpha"]["histogram"])
                 ), row=3, col=1)
             except Exception as hist_error:
                 print(f"Error plotting MACD histogram: {hist_error}")
-                # 继续执行，即使直方图不能绘制
         
-        # 更新布局
+        # Update layout
         fig.update_layout(
             title=f'{symbol} Technical Indicators',
             height=800,
@@ -555,7 +704,7 @@ def plot_interactive_indicators(data, symbol, output_dir, chart_date=None):
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5)
         )
         
-        # 添加时间范围选择器
+        # Add time range selector
         fig.update_xaxes(
             rangeslider_visible=False,
             rangeselector=dict(
@@ -571,12 +720,12 @@ def plot_interactive_indicators(data, symbol, output_dir, chart_date=None):
             row=1, col=1
         )
         
-        # 添加Y轴标签
+        # Add Y axis labels
         fig.update_yaxes(title_text="Price", row=1, col=1)
         fig.update_yaxes(title_text="RSI", range=[0, 100], row=2, col=1)
         fig.update_yaxes(title_text="MACD", row=3, col=1)
         
-        # 保存交互式图表
+        # Save interactive chart
         filepath = os.path.join(output_dir, f"{symbol}_interactive_indicators_{chart_date}.html")
         fig.write_html(filepath)
         print(f"Interactive indicators chart saved to {filepath}")
@@ -607,54 +756,52 @@ def plot_interactive_bollinger(data, symbol, output_dir, chart_date=None):
         chart_date = datetime.now().strftime("%Y%m%d")
     
     try:
-        # 直接使用原始数据列，不尝试重建Series
-        
-        # 创建图表
+        # Create figure
         fig = go.Figure()
         
-        # 添加价格
+        # Add price
         fig.add_trace(go.Scatter(
             x=data.index, 
             y=data['Close'], 
             name='Price',
-            line=dict(color='black')
+            line=dict(color=CHART_STYLES["colors"]["price"])
         ))
         
-        # 添加布林带
+        # Add Bollinger Bands
         if 'BB_High' in data.columns:
-            # 确保数据是一维的
+            # Ensure data is one-dimensional
             bb_high_values = np.asarray(data['BB_High']).flatten()
             fig.add_trace(go.Scatter(
                 x=data.index, 
                 y=bb_high_values, 
                 name='Upper Band',
-                line=dict(color='blue', width=1)
+                line=dict(color=CHART_STYLES["colors"]["bb_upper"], width=1)
             ))
         
         if 'BB_Mid' in data.columns:
-            # 确保数据是一维的
+            # Ensure data is one-dimensional
             bb_mid_values = np.asarray(data['BB_Mid']).flatten()
             fig.add_trace(go.Scatter(
                 x=data.index, 
                 y=bb_mid_values, 
                 name='Middle Band',
-                line=dict(color='blue', width=1, dash='dash')
+                line=dict(color=CHART_STYLES["colors"]["bb_mid"], width=1, dash='dash')
             ))
         
         if 'BB_Low' in data.columns:
-            # 确保数据是一维的
+            # Ensure data is one-dimensional
             bb_low_values = np.asarray(data['BB_Low']).flatten()
-            # 添加布林带下轨并使用填充区域
+            # Add Bollinger Lower Band with fill area
             fig.add_trace(go.Scatter(
                 x=data.index, 
                 y=bb_low_values, 
                 name='Lower Band',
-                line=dict(color='blue', width=1),
-                fill='tonexty',  # 填充到前一个trace
-                fillcolor='rgba(0, 0, 255, 0.1)'
+                line=dict(color=CHART_STYLES["colors"]["bb_lower"], width=1),
+                fill='tonexty',  # Fill to previous trace
+                fillcolor=f'rgba(0, 0, 255, {CHART_STYLES["alpha"]["fill"]})'
             ))
         
-        # 更新布局
+        # Update layout
         fig.update_layout(
             title=f'{symbol} Bollinger Bands',
             xaxis_title='Date',
@@ -664,7 +811,7 @@ def plot_interactive_bollinger(data, symbol, output_dir, chart_date=None):
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5)
         )
         
-        # 添加时间范围选择器
+        # Add time range selector
         fig.update_xaxes(
             rangeslider_visible=False,
             rangeselector=dict(
@@ -679,7 +826,7 @@ def plot_interactive_bollinger(data, symbol, output_dir, chart_date=None):
             )
         )
         
-        # 保存交互式图表
+        # Save interactive chart
         filepath = os.path.join(output_dir, f"{symbol}_interactive_bollinger_{chart_date}.html")
         fig.write_html(filepath)
         print(f"Interactive Bollinger chart saved to {filepath}")
@@ -691,14 +838,14 @@ def plot_interactive_bollinger(data, symbol, output_dir, chart_date=None):
         import traceback
         traceback.print_exc()
         
-        # 即使出错，也尝试创建一个简单的价格图表作为备用
+        # Try to create a simple price chart as fallback
         try:
             fig = go.Figure()
             fig.add_trace(go.Scatter(
                 x=data.index, 
                 y=data['Close'], 
                 name='Price',
-                line=dict(color='black')
+                line=dict(color=CHART_STYLES["colors"]["price"])
             ))
             fig.update_layout(
                 title=f'{symbol} Price (Fallback Chart)',

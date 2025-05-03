@@ -3,7 +3,7 @@
 Technical Analysis Indicators Calculator
 ---------------------------------------
 This script calculates various technical indicators on market data.
-It uses numpy and pandas for calculations without relying on external TA libraries.
+It uses pandas-ta library for efficient and reliable technical indicator calculations.
 
 Includes indicator combinations for different trading strategies:
 - Trend Following: SMA, EMA, ADX
@@ -22,233 +22,6 @@ import matplotlib
 # This fixes the "main thread is not in main loop" error in web threads
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-
-# Indicator calculation functions
-def sma(series, length):
-    """Calculate Simple Moving Average (robust to 1D input)"""
-    series = pd.Series(np.asarray(series).reshape(-1))
-    return series.rolling(window=length).mean()
-
-def ema(series, length):
-    """Calculate Exponential Moving Average (robust to 1D input)"""
-    series = pd.Series(np.asarray(series).reshape(-1))
-    return series.ewm(span=length, adjust=False).mean()
-
-def rsi(close, length=14):
-    """Calculate Relative Strength Index (robust to 1D input)"""
-    close = pd.Series(np.asarray(close).reshape(-1))
-    delta = close.diff()
-    gains = delta.where(delta > 0, 0)
-    losses = -delta.where(delta < 0, 0)
-    avg_gain = gains.rolling(window=length).mean()
-    avg_loss = losses.rolling(window=length).mean()
-    # Avoid division by zero
-    avg_loss = avg_loss.replace(0, 0.00001)
-    rs = avg_gain / avg_loss
-    rsi = 100 - (100 / (1 + rs))
-    return rsi
-
-def macd(close, fast=12, slow=26, signal=9):
-    """Calculate MACD (robust to 1D input)"""
-    close = pd.Series(np.asarray(close).reshape(-1))
-    fast_ema = ema(close, fast)
-    slow_ema = ema(close, slow)
-    macd_line = fast_ema - slow_ema
-    signal_line = ema(macd_line, signal)
-    histogram = macd_line - signal_line
-    return pd.DataFrame({
-        'MACD': macd_line,
-        'MACD_Signal': signal_line,
-        'MACD_Histogram': histogram
-    }, index=close.index)
-
-def bbands(close, length=20, std=2):
-    """Calculate Bollinger Bands (robust to 1D input)"""
-    close = pd.Series(np.asarray(close).reshape(-1))
-    middle = sma(close, length)
-    std_dev = close.rolling(window=length).std()
-    upper = middle + (std_dev * std)
-    lower = middle - (std_dev * std)
-    return pd.DataFrame({
-        'BB_High': upper,
-        'BB_Mid': middle,
-        'BB_Low': lower
-    }, index=close.index)
-
-def stoch(high, low, close, k=14, d=3, smooth_k=3):
-    """Calculate Stochastic Oscillator (robust to 1D input)"""
-    high = pd.Series(np.asarray(high).reshape(-1))
-    low = pd.Series(np.asarray(low).reshape(-1))
-    close = pd.Series(np.asarray(close).reshape(-1))
-    lowest_low = low.rolling(window=k).min()
-    highest_high = high.rolling(window=k).max()
-    
-    # Avoid division by zero by adding a small epsilon
-    denominator = highest_high - lowest_low
-    denominator = denominator.replace(0, 0.00001)
-    
-    k_percent = 100 * ((close - lowest_low) / denominator)
-    if smooth_k > 1:
-        k_percent = k_percent.rolling(window=smooth_k).mean()
-    d_percent = k_percent.rolling(window=d).mean()
-    return pd.DataFrame({
-        'STOCH_K': k_percent,
-        'STOCH_D': d_percent
-    }, index=close.index)
-
-def psar(high, low, close, af_start=0.02, af_step=0.02, af_max=0.2):
-    """Calculate Parabolic SAR (robust to Series/2D input)"""
-    # Ensure inputs are 1D numpy arrays and wrap as Series
-    high = pd.Series(np.asarray(high).reshape(-1))
-    low = pd.Series(np.asarray(low).reshape(-1))
-    close = pd.Series(np.asarray(close).reshape(-1))
-    n = len(close)
-    psar = np.zeros(n)
-    ep = np.zeros(n)
-    af = np.zeros(n)
-    trending = np.zeros(n)  # 1 for uptrend, -1 for downtrend
-    # Initial values
-    psar[0] = float(low.iloc[0])
-    trending[0] = 1  # Assume uptrend to start
-    ep[0] = float(high.iloc[0])
-    af[0] = af_start
-    # Calculate PSAR values
-    for i in range(1, n):
-        prev_psar = psar[i-1]
-        prev_ep = ep[i-1]
-        prev_af = af[i-1]
-        prev_trend = trending[i-1]
-        if prev_trend == 1:  # Uptrend
-            psar[i] = prev_psar + prev_af * (prev_ep - prev_psar)
-            # Check for trend reversal
-            if float(low.iloc[i]) < psar[i]:
-                trending[i] = -1  # Switch to downtrend
-                psar[i] = prev_ep
-                ep[i] = float(low.iloc[i])
-                af[i] = af_start
-            else:
-                trending[i] = 1  # Maintain uptrend
-                if float(high.iloc[i]) > prev_ep:
-                    ep[i] = float(high.iloc[i])
-                    af[i] = min(prev_af + af_step, af_max)
-                else:
-                    ep[i] = prev_ep
-                    af[i] = prev_af
-        else:  # Downtrend
-            psar[i] = prev_psar - prev_af * (prev_psar - prev_ep)
-            # Check for trend reversal
-            if float(high.iloc[i]) > psar[i]:
-                trending[i] = 1  # Switch to uptrend
-                psar[i] = prev_ep
-                ep[i] = float(high.iloc[i])
-                af[i] = af_start
-            else:
-                trending[i] = -1  # Maintain downtrend
-                if float(low.iloc[i]) < prev_ep:
-                    ep[i] = float(low.iloc[i])
-                    af[i] = min(prev_af + af_step, af_max)
-                else:
-                    ep[i] = prev_ep
-                    af[i] = prev_af
-    return pd.Series(psar, index=close.index)
-
-def obv(close, volume):
-    """Calculate On-Balance Volume (robust to 2D/Series input)"""
-    # Ensure inputs are numpy arrays and flatten to 1D if needed
-    close = np.asarray(close).reshape(-1)
-    volume = np.asarray(volume).reshape(-1)
-    # Convert to pandas Series with default integer index
-    close = pd.Series(close)
-    volume = pd.Series(volume)
-    # Calculate direction
-    direction = np.where(close > close.shift(1), 1, np.where(close < close.shift(1), -1, 0))
-    # Calculate OBV
-    obv = (direction * volume).cumsum()
-    return pd.Series(obv, index=close.index)
-
-def adx(high, low, close, length=14):
-    """Calculate Average Directional Index (robust to scalar/2D input)"""
-    # Ensure inputs are numpy arrays and flatten to 1D if needed
-    high = np.asarray(high).reshape(-1)
-    low = np.asarray(low).reshape(-1)
-    close = np.asarray(close).reshape(-1)
-    # Convert to pandas Series with default integer index
-    high = pd.Series(high)
-    low = pd.Series(low)
-    close = pd.Series(close)
-    # Calculate True Range
-    tr1 = high - low
-    tr2 = abs(high - close.shift())
-    tr3 = abs(low - close.shift())
-    tr = pd.DataFrame({'tr1': tr1, 'tr2': tr2, 'tr3': tr3}, index=high.index).max(axis=1)
-    
-    # Calculate directional movement
-    up_move = high - high.shift()
-    down_move = low.shift() - low
-    
-    # Calculate positive directional movement (+DM)
-    pdm = up_move.where((up_move > down_move) & (up_move > 0), 0)
-    
-    # Calculate negative directional movement (-DM)
-    ndm = down_move.where((down_move > up_move) & (down_move > 0), 0)
-    
-    # Smooth TR, +DM, -DM using Wilder's method
-    smoothed_tr = tr.copy()
-    smoothed_pdm = pdm.copy()
-    smoothed_ndm = ndm.copy()
-    
-    # Apply Wilder's smoothing
-    for i in range(1, len(tr)):
-        smoothed_tr.iloc[i] = smoothed_tr.iloc[i-1] - (smoothed_tr.iloc[i-1] / length) + tr.iloc[i]
-        smoothed_pdm.iloc[i] = smoothed_pdm.iloc[i-1] - (smoothed_pdm.iloc[i-1] / length) + pdm.iloc[i]
-        smoothed_ndm.iloc[i] = smoothed_ndm.iloc[i-1] - (smoothed_ndm.iloc[i-1] / length) + ndm.iloc[i]
-    
-    # Avoid division by zero
-    smoothed_tr = smoothed_tr.replace(0, 0.00001)
-    
-    # Calculate positive directional index (+DI) and negative directional index (-DI)
-    pdi = 100 * (smoothed_pdm / smoothed_tr)
-    ndi = 100 * (smoothed_ndm / smoothed_tr)
-    
-    # Calculate directional index (DX)
-    # Avoid division by zero
-    sum_di = pdi + ndi
-    sum_di = sum_di.replace(0, 0.00001)
-    
-    dx = 100 * abs(pdi - ndi) / sum_di
-    
-    # Calculate ADX as smoothed DX
-    adx = dx.rolling(window=length).mean()
-    
-    return pd.DataFrame({
-        'ADX': adx,
-        'PDI': pdi,
-        'NDI': ndi
-    })
-
-def ichimoku(high, low, close, tenkan=9, kijun=26, senkou=52):
-    """Calculate Ichimoku Cloud components (robust to 1D input)"""
-    high = pd.Series(np.asarray(high).reshape(-1))
-    low = pd.Series(np.asarray(low).reshape(-1))
-    close = pd.Series(np.asarray(close).reshape(-1))
-    high_tenkan = high.rolling(window=tenkan).max()
-    low_tenkan = low.rolling(window=tenkan).min()
-    tenkan_sen = (high_tenkan + low_tenkan) / 2
-    high_kijun = high.rolling(window=kijun).max()
-    low_kijun = low.rolling(window=kijun).min()
-    kijun_sen = (high_kijun + low_kijun) / 2
-    senkou_span_a = ((tenkan_sen + kijun_sen) / 2).shift(kijun)
-    high_senkou = high.rolling(window=senkou).max()
-    low_senkou = low.rolling(window=senkou).min()
-    senkou_span_b = ((high_senkou + low_senkou) / 2).shift(kijun)
-    chikou_span = close.shift(-kijun)
-    return pd.DataFrame({
-        'Ichimoku_Tenkan': tenkan_sen,
-        'Ichimoku_Kijun': kijun_sen,
-        'Ichimoku_SpanA': senkou_span_a,
-        'Ichimoku_SpanB': senkou_span_b,
-        'Ichimoku_Chikou': chikou_span
-    }, index=close.index)
 
 def load_data(file_path):
     """
@@ -280,7 +53,7 @@ def load_data(file_path):
 
 def calculate_indicators(df, parameter_set='default'):
     """
-    Calculate various technical indicators
+    Calculate various technical indicators using pandas-ta
     
     Args:
         df (pandas.DataFrame): Price data with at least OHLC columns
@@ -294,6 +67,9 @@ def calculate_indicators(df, parameter_set='default'):
     # Make a copy of the dataframe to avoid modifying the original
     data = df.copy()
     
+    # Import pandas_ta inside function to avoid global import
+    import pandas_ta as ta
+    
     # Ensure we have the required columns
     required_columns = ['Open', 'High', 'Low', 'Close', 'Volume']
     for col in required_columns:
@@ -303,138 +79,228 @@ def calculate_indicators(df, parameter_set='default'):
             else:
                 raise ValueError(f"Required column {col} not found in dataframe")
     
-    # Moving Averages - Default parameters
-    # SMA
-    ma_windows = [5, 10, 20, 50, 100, 150]
-    for window in ma_windows:
-        data[f'SMA{window}'] = sma(data['Close'], window)
+    # Define parameter sets dictionary for better organization
+    param_sets = {
+        'default': {
+            'ma': [5, 10, 20, 50, 100, 150],
+            'short_ma': [9, 21],
+            'long_ma': [200],
+            'rsi': [14, 7],
+            'macd': [
+                {'fast': 12, 'slow': 26, 'signal': 9},
+                {'fast': 5, 'slow': 35, 'signal': 5}
+            ],
+            'bbands': [
+                {'length': 20, 'std': 2.0},
+                {'length': 14, 'std': 1.5},
+                {'length': 30, 'std': 2.5}
+            ],
+            'use_ichimoku': True
+        },
+        'short_term': {
+            'ma': [5, 10, 20, 50],
+            'short_ma': [9, 21],
+            'rsi': [14],
+            'macd': [{'fast': 12, 'slow': 26, 'signal': 9}],
+            'bbands': [{'length': 20, 'std': 2.0}]
+        },
+        'medium_term': {
+            'ma': [10, 20, 50, 100],
+            'long_ma': [200],
+            'rsi': [14],
+            'macd': [{'fast': 12, 'slow': 26, 'signal': 9}],
+            'bbands': [{'length': 20, 'std': 2.0}]
+        },
+        'high_freq': {
+            'ma': [5, 10, 20, 50],
+            'rsi': [7, 14],
+            'macd': [
+                {'fast': 12, 'slow': 26, 'signal': 9},
+                {'fast': 5, 'slow': 35, 'signal': 5}
+            ],
+            'bbands': [{'length': 20, 'std': 2.0}]
+        },
+        'tight_channel': {
+            'ma': [5, 10, 20, 50],
+            'rsi': [14],
+            'macd': [{'fast': 12, 'slow': 26, 'signal': 9}],
+            'bbands': [
+                {'length': 20, 'std': 2.0},
+                {'length': 14, 'std': 1.5}
+            ]
+        },
+        'wide_channel': {
+            'ma': [5, 10, 20, 50],
+            'rsi': [14],
+            'macd': [{'fast': 12, 'slow': 26, 'signal': 9}],
+            'bbands': [
+                {'length': 20, 'std': 2.0},
+                {'length': 30, 'std': 2.5}
+            ]
+        },
+        'volatility': {
+            'ma': [5, 10, 20, 50],
+            'rsi': [14],
+            'macd': [{'fast': 12, 'slow': 26, 'signal': 9}],
+            'bbands': [
+                {'length': 20, 'std': 2.0},
+                {'length': 14, 'std': 1.5}
+            ]
+        },
+        'ichimoku': {
+            'ma': [5, 10, 20, 50],
+            'rsi': [14],
+            'macd': [{'fast': 12, 'slow': 26, 'signal': 9}],
+            'bbands': [{'length': 20, 'std': 2.0}],
+            'use_ichimoku': True
+        }
+    }
     
-    # EMA
-    for window in ma_windows:
-        data[f'EMA{window}'] = ema(data['Close'], window)
+    # Use default if parameter_set not found
+    params = param_sets.get(parameter_set, param_sets['default'])
+    
+    # Calculate Moving Averages - SMA and EMA
+    for window in params.get('ma', []):
+        data[f'SMA{window}'] = ta.sma(data['Close'], length=window)
+        data[f'EMA{window}'] = ta.ema(data['Close'], length=window)
     
     # Add short-term trading parameters
-    if parameter_set in ['default', 'short_term']:
-        # Short-term SMA and EMA
-        data['SMA9'] = sma(data['Close'], 9)
-        data['SMA21'] = sma(data['Close'], 21)
-        data['EMA12'] = ema(data['Close'], 12)
-        data['EMA26'] = ema(data['Close'], 26)
+    for window in params.get('short_ma', []):
+        if f'SMA{window}' not in data.columns:
+            data[f'SMA{window}'] = ta.sma(data['Close'], length=window)
+        if f'EMA{window}' not in data.columns:
+            data[f'EMA{window}'] = ta.ema(data['Close'], length=window)
     
     # Add medium-term trend parameters
-    if parameter_set in ['default', 'medium_term']:
-        # Medium-term SMA and EMA (some already calculated in default)
-        # SMA50 and EMA50 already calculated above
-        data['SMA200'] = sma(data['Close'], 200)
-        data['EMA200'] = ema(data['Close'], 200)
+    for window in params.get('long_ma', []):
+        if f'SMA{window}' not in data.columns:
+            data[f'SMA{window}'] = ta.sma(data['Close'], length=window)
+        if f'EMA{window}' not in data.columns:
+            data[f'EMA{window}'] = ta.ema(data['Close'], length=window)
     
-    # RSI - 14 period (default)
-    data['RSI'] = rsi(data['Close'], 14)
+    # Calculate RSI
+    for length in params.get('rsi', [14]):
+        if length == 14:
+            data['RSI'] = ta.rsi(data['Close'], length=length)
+        else:
+            data[f'RSI{length}'] = ta.rsi(data['Close'], length=length)
     
-    # Add high-frequency trading RSI(7)
-    if parameter_set in ['default', 'high_freq']:
-        data['RSI7'] = rsi(data['Close'], 7)
+    # Calculate MACD
+    macd_configs = params.get('macd', [{'fast': 12, 'slow': 26, 'signal': 9}])
+    for i, macd_params in enumerate(macd_configs):
+        if i == 0:  # Default MACD
+            macd_result = ta.macd(data['Close'], **macd_params)
+            data['MACD'] = macd_result['MACD_12_26_9']
+            data['MACD_Signal'] = macd_result['MACDs_12_26_9']
+            data['MACD_Histogram'] = macd_result['MACDh_12_26_9']
+        else:  # High-frequency MACD
+            macd_result = ta.macd(data['Close'], **macd_params)
+            fast, slow, signal = macd_params['fast'], macd_params['slow'], macd_params['signal']
+            data[f'MACD_HF'] = macd_result[f'MACD_{fast}_{slow}_{signal}']
+            data[f'MACD_HF_Signal'] = macd_result[f'MACDs_{fast}_{slow}_{signal}']
+            data[f'MACD_HF_Histogram'] = macd_result[f'MACDh_{fast}_{slow}_{signal}']
     
-    # MACD - default parameters (12, 26, 9)
-    macd_result = macd(data['Close'], 12, 26, 9)
-    data['MACD'] = macd_result['MACD']
-    data['MACD_Signal'] = macd_result['MACD_Signal']
-    data['MACD_Histogram'] = macd_result['MACD_Histogram']
+    # Calculate Bollinger Bands
+    bbands_configs = params.get('bbands', [{'length': 20, 'std': 2.0}])
+    for i, bb_params in enumerate(bbands_configs):
+        bbands_result = ta.bbands(data['Close'], **bb_params)
+        
+        if i == 0:  # Default Bollinger Bands
+            data['BB_High'] = bbands_result[f"BBU_{bb_params['length']}_{bb_params['std']}"]
+            data['BB_Mid'] = bbands_result[f"BBM_{bb_params['length']}_{bb_params['std']}"]
+            data['BB_Low'] = bbands_result[f"BBL_{bb_params['length']}_{bb_params['std']}"]
+        elif bb_params['length'] == 14 and bb_params['std'] == 1.5:  # Tight channel
+            data['BB_Tight_High'] = bbands_result[f"BBU_{bb_params['length']}_{bb_params['std']}"]
+            data['BB_Tight_Mid'] = bbands_result[f"BBM_{bb_params['length']}_{bb_params['std']}"]
+            data['BB_Tight_Low'] = bbands_result[f"BBL_{bb_params['length']}_{bb_params['std']}"]
+        elif bb_params['length'] == 30 and bb_params['std'] == 2.5:  # Wide channel
+            data['BB_Wide_High'] = bbands_result[f"BBU_{bb_params['length']}_{bb_params['std']}"]
+            data['BB_Wide_Mid'] = bbands_result[f"BBM_{bb_params['length']}_{bb_params['std']}"]
+            data['BB_Wide_Low'] = bbands_result[f"BBL_{bb_params['length']}_{bb_params['std']}"]
     
-    # Add high-frequency MACD (5, 35, 5)
-    if parameter_set in ['default', 'high_freq']:
-        macd_hf_result = macd(data['Close'], 5, 35, 5)
-        data['MACD_HF'] = macd_hf_result['MACD']
-        data['MACD_HF_Signal'] = macd_hf_result['MACD_Signal']
-        data['MACD_HF_Histogram'] = macd_hf_result['MACD_Histogram']
+    # Stochastic Oscillator
+    stoch_result = ta.stoch(data['High'], data['Low'], data['Close'], k=14, d=3, smooth_k=3)
+    data['STOCH_K'] = stoch_result['STOCHk_14_3_3']
+    data['STOCH_D'] = stoch_result['STOCHd_14_3_3']
     
-    # Bollinger Bands - default parameters (20, 2)
-    bb_result = bbands(data['Close'], 20, 2)
-    data['BB_High'] = bb_result['BB_High']
-    data['BB_Mid'] = bb_result['BB_Mid']
-    data['BB_Low'] = bb_result['BB_Low']
-    
-    # Add tight channel Bollinger Bands (14, 1.5)
-    if parameter_set in ['default', 'tight_channel', 'volatility']:
-        bb_tight_result = bbands(data['Close'], 14, 1.5)
-        data['BB_Tight_High'] = bb_tight_result['BB_High']
-        data['BB_Tight_Mid'] = bb_tight_result['BB_Mid']
-        data['BB_Tight_Low'] = bb_tight_result['BB_Low']
-    
-    # Add wide channel Bollinger Bands (30, 2.5)
-    if parameter_set in ['default', 'wide_channel']:
-        bb_wide_result = bbands(data['Close'], 30, 2.5)
-        data['BB_Wide_High'] = bb_wide_result['BB_High']
-        data['BB_Wide_Mid'] = bb_wide_result['BB_Mid']
-        data['BB_Wide_Low'] = bb_wide_result['BB_Low']
-    
-    # Calculate Parabolic SAR
-    data['SAR'] = psar(data['High'], data['Low'], data['Close'], 0.02, 0.02, 0.2)
-    
-    # Calculate Stochastic Oscillator
-    stoch_result = stoch(data['High'], data['Low'], data['Close'], 14, 3, 3)
-    data['STOCH_K'] = stoch_result['STOCH_K']
-    data['STOCH_D'] = stoch_result['STOCH_D']
-    
-    # ADX (Average Directional Index) - For trend strength
-    adx_result = adx(data['High'], data['Low'], data['Close'], 14)
-    data['ADX'] = adx_result['ADX']
-    data['PDI'] = adx_result['PDI']
-    data['NDI'] = adx_result['NDI']
+    # ADX (Average Directional Index)
+    adx_result = ta.adx(data['High'], data['Low'], data['Close'], length=14)
+    data['ADX'] = adx_result['ADX_14']
+    data['PDI'] = adx_result['DMP_14']
+    data['NDI'] = adx_result['DMN_14']
     
     # On-Balance Volume (OBV)
-    data['OBV'] = obv(data['Close'], data['Volume'])
+    data['OBV'] = ta.obv(data['Close'], data['Volume'])
     
-    # Calculate Ichimoku Cloud components
-    if parameter_set in ['default', 'ichimoku']:
+    # Parabolic SAR
+    sar_result = ta.psar(data['High'], data['Low'], data['Close'], af=0.02, max_af=0.2)
+    
+    # 处理不同版本pandas_ta库返回的键名差异
+    if 'PSARl_0.020_0.200' in sar_result:
+        data['SAR'] = sar_result['PSARl_0.020_0.200']
+    elif 'PSAR_0.020_0.200' in sar_result:
+        data['SAR'] = sar_result['PSAR_0.020_0.200']
+    else:
+        # 如果找不到已知的键名，尝试寻找包含PSAR的键
+        psar_keys = [key for key in sar_result.keys() if 'PSAR' in key]
+        if psar_keys:
+            data['SAR'] = sar_result[psar_keys[0]]
+        else:
+            print(f"Warning: Could not find PSAR result in returned data. Available keys: {sar_result.keys()}")
+            data['SAR'] = np.nan  # 使用NaN作为数据不可用的标识
+    
+    # Calculate Ichimoku Cloud
+    if params.get('use_ichimoku', False):
         try:
-            ichimoku_result = ichimoku(data['High'], data['Low'], data['Close'], 9, 26, 52)
-            # 首先将计算结果添加到数据框中
-            for col in ichimoku_result.columns:
-                data[col] = ichimoku_result[col]
+            ichimoku_result = ta.ichimoku(data['High'], data['Low'], data['Close'], 
+                                      tenkan=9, kijun=26, senkou=52)
             
-            # 注释掉可能导致索引对齐问题的部分
-            # 这里添加一个默认值
+            # 处理新版pandas_ta返回元组的情况
+            if isinstance(ichimoku_result, tuple):
+                # 新版pandas_ta返回(DataFrame, DataFrame)，第一个是指标值，第二个是云延迟值
+                ichimoku_df = ichimoku_result[0]  # 获取第一个DataFrame
+            else:
+                # 旧版pandas_ta返回单个DataFrame
+                ichimoku_df = ichimoku_result
+            
+            # Map Ichimoku columns to our naming convention
+            ichimoku_mapping = {
+                'ITS_9': 'Ichimoku_Tenkan',
+                'IKS_26': 'Ichimoku_Kijun',
+                'ISA_9': 'Ichimoku_SpanA',
+                'ISB_26': 'Ichimoku_SpanB',
+                'ICS_26': 'Ichimoku_Chikou'
+            }
+            
+            for src, dst in ichimoku_mapping.items():
+                if src in ichimoku_df.columns:
+                    data[dst] = ichimoku_df[src]
+                else:
+                    # 尝试找到包含相似前缀的列
+                    similar_found = False
+                    for col in ichimoku_df.columns:
+                        if src.split('_')[0] in col:
+                            data[dst] = ichimoku_df[col]
+                            similar_found = True
+                            break
+                    if not similar_found:
+                        data[dst] = np.nan
+            
+            # Calculate Cloud Direction more reliably            # Calculate Cloud Direction more reliably
             data['Cloud_Direction'] = 0
-            
-            '''
-            # 原始代码导致索引对齐问题
-            close = data['Close']
-            span_a = data['Ichimoku_SpanA']
-            span_b = data['Ichimoku_SpanB']
-            
-            # 如果有DataFrame，强制只取第一列
-            if isinstance(close, pd.DataFrame):
-                close = close.squeeze()
-                if isinstance(close, pd.DataFrame):
-                    close = close.iloc[:, 0]
-            if isinstance(span_a, pd.DataFrame):
-                span_a = span_a.squeeze()
-                if isinstance(span_a, pd.DataFrame):
-                    span_a = span_a.iloc[:, 0]
-            if isinstance(span_b, pd.DataFrame):
-                span_b = span_b.squeeze()
-                if isinstance(span_b, pd.DataFrame):
-                    span_b = span_b.iloc[:, 0]
-            
-            # 确保索引一致
-            close = close.reindex(data.index)
-            span_a = span_a.reindex(data.index)
-            span_b = span_b.reindex(data.index)
-            
-            # 计算Cloud Direction
-            cloud_dir = np.where(close > span_a, 1, np.where(close < span_b, -1, 0))
-            data['Cloud_Direction'] = pd.Series(cloud_dir, index=data.index)
-            '''
+            data_with_cloud = data.dropna(subset=['Ichimoku_SpanA', 'Ichimoku_SpanB'])
+            if not data_with_cloud.empty:
+                mask_above = data_with_cloud['Close'] > data_with_cloud['Ichimoku_SpanA']
+                mask_below = data_with_cloud['Close'] < data_with_cloud['Ichimoku_SpanB']
+                data.loc[mask_above.index, 'Cloud_Direction'] = 1
+                data.loc[mask_below.index, 'Cloud_Direction'] = -1
             
         except Exception as e:
             print(f"Error calculating Ichimoku Cloud: {e}")
-            # 如果出错，至少添加空列以防止后面的错误
-            data['Ichimoku_Tenkan'] = np.nan
-            data['Ichimoku_Kijun'] = np.nan
-            data['Ichimoku_SpanA'] = np.nan
-            data['Ichimoku_SpanB'] = np.nan
-            data['Ichimoku_Chikou'] = np.nan
+            # If error occurs, add empty columns to prevent downstream errors
+            for col in ['Ichimoku_Tenkan', 'Ichimoku_Kijun', 'Ichimoku_SpanA', 
+                        'Ichimoku_SpanB', 'Ichimoku_Chikou']:
+                data[col] = np.nan
             data['Cloud_Direction'] = 0
     
     return data

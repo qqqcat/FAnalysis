@@ -90,6 +90,25 @@ class ApiService {
   }
   
   /**
+   * Get chart data for a symbol with indicators
+   * @param {string} symbol - The trading symbol
+   * @param {string} parameterSet - Parameter set to use
+   * @param {string} period - Time period
+   * @param {string} interval - Data interval
+   */
+  static async getChartData(symbol, parameterSet = 'default', period = '1y', interval = '1d') {
+    try {
+      const response = await axios.get(`${API_URL}/api/chart-data/${symbol}`, {
+        params: { parameter_set: parameterSet, period, interval }
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching chart data for ${symbol}:`, error);
+      throw error;
+    }
+  }
+  
+  /**
    * Get optimal indicators for an asset type
    * @param {string} assetType - The asset type (forex, commodities, indices)
    */
