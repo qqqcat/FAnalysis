@@ -25,6 +25,24 @@
       border-radius: 8px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
       margin-bottom: 25px;
+      display: flex;
+      flex-direction: column;
+      height: auto;
+      min-height: 400px;
+    }
+    .chart-container > div {
+      width: 100%;
+      height: auto;
+      min-height: 400px;
+      max-height: 85vh;
+    }
+    @media (max-width: 768px) {
+      .chart-container {
+        min-height: 300px;
+      }
+      .chart-container > div {
+        min-height: 300px;
+      }
     }
     .data-card {
       background-color: white;

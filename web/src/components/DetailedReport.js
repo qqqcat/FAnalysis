@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { 
   Card, Row, Col, Typography, Select, Button, Spin, 
-  Tabs, Empty, Alert, Divider, Form, Radio 
+  Empty, Alert, Form, Radio 
 } from 'antd';
 import { 
   PrinterOutlined, 
@@ -16,117 +16,81 @@ import axios from 'axios';
 const { Title, Paragraph } = Typography;
 const { Option } = Select;
 
-const DetailedReport = () => {
-  const { symbol } = useParams();
-  const [searchParams] = useSearchParams();
-  const { t, i18n } = useTranslation();
+// Debounced function to auto-generate reports when parameters change
+const useDebounce = (value, delay) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+    
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+  
+  return debouncedValue;
+};
+
+// Custom hook for managing report generation and display
+const useReportManager = (initialSymbol, initialParams) => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
-  const [assetCategories, setAssetCategories] = useState({});
-  const [selectedSymbol, setSelectedSymbol] = useState(symbol || '');
-  const [parameterSets, setParameterSets] = useState([]);
-  const [selectedParameterSet, setSelectedParameterSet] = useState(
-    searchParams.get('parameter_set') || 'default'
-  );
-  const [language, setLanguage] = useState(i18n.language || 'en');
-  const [period, setPeriod] = useState('1y');
+  const [error, setError] = useState(null);
   const [reportUrl, setReportUrl] = useState(null);
   const [reportContent, setReportContent] = useState('');
-  const [error, setError] = useState(null);
+  const [reportState, setReportState] = useState('idle'); // 'idle', 'loading', 'success', 'error'
   
-  // Use refs to track loading status and prevent duplicate requests
-  const reportAlreadyLoaded = useRef(false);
-  const initialDataLoaded = useRef(false);
-  const generatingReport = useRef(false);
-  const reportContainerRef = useRef(null);
+  const reportRef = useRef(null);
   
-  // Handle direct links to report HTML files - only runs once on mount
-  useEffect(() => {
-    if (symbol && symbol.endsWith('.html') && !reportAlreadyLoaded.current) {
-      reportAlreadyLoaded.current = true;
-      // Extract the actual symbol from the filename
-      const baseSymbol = symbol.split('_')[0];
-      setSelectedSymbol(baseSymbol);
-      
-      // Set report URL directly without triggering report generation
-      const reportPath = `/reports/${symbol}`;
-      setReportUrl(reportPath);
-      fetchAndDisplayReport(reportPath);
-    }
-  }, []); 
-
-  // Load assets and parameters on component mount
-  useEffect(() => {
-    // Prevent duplicate calls
-    if (initialDataLoaded.current) {
-      return;
-    }
+  // Function to generate a report
+  const generateReport = useCallback(async (symbol, parameterSet, period, language) => {
+    if (!symbol || loading) return null;
     
-    const fetchInitialData = async () => {
-      try {
-        setLoading(true);
-        initialDataLoaded.current = true;
-        
-        // Fetch asset categories
-        const categories = await ApiService.getAssets();
-        setAssetCategories(categories);
-        
-        // Fetch parameter sets
-        const parameters = await ApiService.getParameters();
-        setParameterSets(parameters);
-        
-        // If symbol is provided in URL and we haven't loaded a report yet, attempt to show it
-        if (symbol && !reportAlreadyLoaded.current) {
-          // Extract the actual symbol if it's an HTML file name
-          let actualSymbol = symbol;
-          if (symbol.includes('_interactive_report_')) {
-            actualSymbol = symbol.split('_')[0];
-            setSelectedSymbol(actualSymbol);
-          }
-          
-          // If this is a direct link to a report file, just display it without regenerating
-          if (symbol.endsWith('.html')) {
-            reportAlreadyLoaded.current = true;
-            const reportPath = `/reports/${symbol}`;
-            setReportUrl(reportPath);
-            await fetchAndDisplayReport(reportPath);
-          } else if (!generatingReport.current) {
-            // Only generate a new report if we're not already generating one
-            await generateReport();
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching initial data:', error);
-        setError(t('error'));
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchInitialData();
-  }, [symbol, t]); // eslint-disable-line react-hooks/exhaustive-deps
-  
-  // Watch for language changes and regenerate the report when needed
-  useEffect(() => {
-    // Skip the first render - we only want to respond to actual language changes
-    if (initialDataLoaded.current && selectedSymbol && !loading && !generatingReport.current) {
-      // Reset any previously loaded report
-      reportAlreadyLoaded.current = false;
-      
-      // Generate a new report with the updated language
-      generateReport();
-    }
-  }, [language]); // eslint-disable-line react-hooks/exhaustive-deps
-  
-  // Function to fetch and display the report content
-  const fetchAndDisplayReport = async (url) => {
     try {
       setLoading(true);
+      setError(null);
+      setReportState('loading');
+      
+      // Extract base symbol if needed
+      const baseSymbol = symbol.includes('_') ? symbol.split('_')[0] : symbol;
+      
+      // Single API call to generate the report (no need to call generateCharts first)
+      const reportResponse = await ApiService.get(
+        `/api/generate_report/${baseSymbol}?parameter_set=${parameterSet}&period=${period}&language=${language}`
+      );
+      
+      if (reportResponse && reportResponse.report_url) {
+        setReportUrl(reportResponse.report_url);
+        setReportState('success');
+        return reportResponse.report_url;
+      } else {
+        throw new Error('Failed to get report URL from server');
+      }
+    } catch (error) {
+      console.error(`Error generating report for ${symbol}:`, error);
+      setError(t('error_generating_report', 'Error generating report'));
+      setReportState('error');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [t]);
+  
+  // Function to fetch and display a report by URL
+  const fetchAndDisplayReport = useCallback(async (url) => {
+    if (!url) return;
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
       // Fetch the HTML content
       const response = await axios.get(url);
       
       if (response.status === 200) {
-        // Get the full HTML content
-        let htmlContent = response.data;
+        const htmlContent = response.data;
         
         // Extract the <head> content for styles and scripts
         const headMatch = htmlContent.match(/<head[^>]*>([\s\S]*)<\/head>/i);
@@ -166,25 +130,7 @@ const DetailedReport = () => {
             </div>
           `);
           
-          // Add event listener for script execution
-          setTimeout(() => {
-            if (reportContainerRef.current) {
-              // Manually add Plotly if needed
-              if (!window.Plotly) {
-                const plotlyScript = document.createElement('script');
-                plotlyScript.src = 'https://cdn.plot.ly/plotly-latest.min.js';
-                plotlyScript.async = true;
-                document.head.appendChild(plotlyScript);
-                
-                plotlyScript.onload = () => {
-                  // Process any inline scripts that might depend on Plotly
-                  processScripts();
-                };
-              } else {
-                processScripts();
-              }
-            }
-          }, 100);
+          setReportState('success');
         } else {
           throw new Error('Could not extract report body content');
         }
@@ -193,18 +139,19 @@ const DetailedReport = () => {
       }
     } catch (error) {
       console.error('Error fetching report:', error);
-      setError(t('error_fetching_report'));
+      setError(t('error_fetching_report', 'Error fetching report'));
+      setReportState('error');
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
   
-  // Helper function to process scripts in the report
-  const processScripts = () => {
-    if (!reportContainerRef.current) return;
+  // Process scripts in the report after rendering
+  const processScripts = useCallback(() => {
+    if (!reportRef.current) return;
     
     // Process any script tags in the report
-    const scripts = reportContainerRef.current.querySelectorAll('script');
+    const scripts = reportRef.current.querySelectorAll('script');
     scripts.forEach(script => {
       try {
         const newScript = document.createElement('script');
@@ -227,91 +174,150 @@ const DetailedReport = () => {
         console.error('Error processing script:', err);
       }
     });
+  }, []);
+  
+  // Return everything needed to manage reports
+  return {
+    loading,
+    error,
+    reportUrl,
+    reportContent,
+    reportState,
+    reportRef,
+    generateReport,
+    fetchAndDisplayReport,
+    processScripts,
+    setReportUrl,
+    setReportContent
+  };
+};
+
+// Strategy explanations component - separates hardcoded explanations from the main component
+const StrategyExplanation = ({ parameterSet }) => {
+  const { t } = useTranslation();
+  
+  // Get strategy details from translations or backend
+  const getStrategyInfo = (parameterSet) => {
+    const strategyMap = {
+      'trend_following': {
+        indicators: 'SMA(50,200) + EMA(12,26) + ADX(14)',
+        translationKey: 'strategy_explanations.trend_following'
+      },
+      'momentum': {
+        indicators: 'RSI(14) + MACD(12,26,9) + Stochastic(14,3)',
+        translationKey: 'strategy_explanations.momentum'
+      },
+      'volatility': {
+        indicators: 'Bollinger Bands(20,2) + ATR(14) + Keltner Channels',
+        translationKey: 'strategy_explanations.volatility'
+      },
+      'ichimoku': {
+        indicators: 'Ichimoku Cloud(9,26,52) + Parabolic SAR(0.02,0.2) + On-Balance Volume',
+        translationKey: 'strategy_explanations.ichimoku'
+      },
+      'default': {
+        indicators: 'SMA(50) + EMA(20) + RSI(14) + MACD(12,26,9)',
+        translationKey: 'strategy_explanations.default'
+      }
+    };
+    
+    return strategyMap[parameterSet] || {
+      indicators: t('strategy_explanations.custom_indicators'),
+      translationKey: 'strategy_explanations.custom'
+    };
   };
   
-  const generateReport = async () => {
-    if (!selectedSymbol || generatingReport.current) {
-      return;
-    }
+  const strategyInfo = getStrategyInfo(parameterSet);
+  
+  if (!parameterSet) return null;
+  
+  return (
+    <div>
+      <b>{t(`parameter_sets.${parameterSet}`)}: </b>
+      {strategyInfo.indicators}. {t(strategyInfo.translationKey, 'No explanation available for this strategy.')}
+    </div>
+  );
+};
+
+const DetailedReport = () => {
+  const { symbol } = useParams();
+  const [searchParams] = useSearchParams();
+  const { t, i18n } = useTranslation();
+  const [selectedSymbol, setSelectedSymbol] = useState(symbol || '');
+  const [parameterSets, setParameterSets] = useState([]);
+  const [selectedParameterSet, setSelectedParameterSet] = useState(
+    searchParams.get('parameter_set') || 'default'
+  );
+  const [language, setLanguage] = useState(i18n.language || 'en');
+  const [period, setPeriod] = useState('1y');
+  const [assetCategories, setAssetCategories] = useState({});
+  
+  const debouncedSymbol = useDebounce(selectedSymbol, 500);
+  const debouncedParameterSet = useDebounce(selectedParameterSet, 500);
+  const debouncedPeriod = useDebounce(period, 500);
+  const debouncedLanguage = useDebounce(language, 500);
+  
+  const {
+    loading,
+    error,
+    reportUrl,
+    reportContent,
+    reportRef,
+    generateReport,
+    fetchAndDisplayReport,
+    processScripts
+  } = useReportManager(selectedSymbol, { parameterSet: selectedParameterSet, period, language });
+  
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        // Fetch asset categories
+        const categories = await ApiService.getAssets();
+        setAssetCategories(categories);
+        
+        // Fetch parameter sets
+        const parameters = await ApiService.getParameters();
+        setParameterSets(parameters);
+        
+        // If symbol is provided in URL and it's a direct link to a report file, display it
+        if (symbol && symbol.endsWith('.html')) {
+          const reportPath = `/reports/${symbol}`;
+          await fetchAndDisplayReport(reportPath);
+        }
+      } catch (error) {
+        console.error('Error fetching initial data:', error);
+      }
+    };
     
-    try {
-      setLoading(true);
-      setError(null);
-      generatingReport.current = true;
-      
-      // Make sure we're always using the base symbol (not a filename)
-      let baseSymbol = selectedSymbol;
-      if (selectedSymbol.includes('_')) {
-        // Extract the actual symbol if it's a filename pattern
-        baseSymbol = selectedSymbol.split('_')[0];
-        setSelectedSymbol(baseSymbol);
-      }
-      
-      // First, generate charts (which calculates indicators)
-      await ApiService.generateCharts(
-        baseSymbol, 
-        [selectedParameterSet], 
-        period
-      );
-      
-      // Now call the API endpoint to generate the report
-      const reportResponse = await ApiService.get(
-        `/api/generate_report/${baseSymbol}?parameter_set=${selectedParameterSet}&period=${period}&language=${language}`
-      );
-      
-      if (reportResponse && reportResponse.report_url) {
-        reportAlreadyLoaded.current = true;
-        setReportUrl(reportResponse.report_url);
-        // Fetch and display the report content
-        await fetchAndDisplayReport(reportResponse.report_url);
-      } else {
-        throw new Error('Failed to get report URL from server');
-      }
-    } catch (error) {
-      console.error(`Error generating report for ${selectedSymbol}:`, error);
-      setError(t('error'));
-    } finally {
-      setLoading(false);
-      generatingReport.current = false;
+    fetchInitialData();
+  }, [symbol, fetchAndDisplayReport]);
+  
+  useEffect(() => {
+    if (debouncedSymbol && debouncedParameterSet && debouncedPeriod && debouncedLanguage) {
+      generateReport(debouncedSymbol, debouncedParameterSet, debouncedPeriod, debouncedLanguage);
     }
-  };
+  }, [debouncedSymbol, debouncedParameterSet, debouncedPeriod, debouncedLanguage, generateReport]);
   
   const handleSymbolChange = (value) => {
     if (value !== selectedSymbol) {
-      // Reset the report URL when changing symbols
-      setReportUrl(null);
-      setReportContent('');
-      reportAlreadyLoaded.current = false;
       setSelectedSymbol(value);
     }
   };
   
   const handleParameterChange = (value) => {
     if (value !== selectedParameterSet) {
-      // Reset the report URL when changing parameters
-      setReportUrl(null);
-      setReportContent('');
-      reportAlreadyLoaded.current = false;
       setSelectedParameterSet(value);
     }
   };
   
   const handlePeriodChange = (value) => {
     if (value !== period) {
-      // Reset the report URL when changing period
-      setReportUrl(null);
-      setReportContent('');
-      reportAlreadyLoaded.current = false;
       setPeriod(value);
     }
   };
   
   const handleLanguageChange = (e) => {
     if (e.target.value !== language) {
-      // Reset the report URL when changing language
-      setReportUrl(null);
-      setReportContent('');
-      reportAlreadyLoaded.current = false;
       setLanguage(e.target.value);
     }
   };
@@ -356,7 +362,7 @@ const DetailedReport = () => {
           type="error"
           showIcon
           action={
-            <Button size="small" onClick={generateReport}>
+            <Button size="small" onClick={() => generateReport(selectedSymbol, selectedParameterSet, period, language)}>
               {t('retry')}
             </Button>
           }
@@ -402,7 +408,7 @@ const DetailedReport = () => {
         </div>
         
         <div 
-          ref={reportContainerRef}
+          ref={reportRef}
           className="report-container"
           style={{
             backgroundColor: 'white',
@@ -487,7 +493,7 @@ const DetailedReport = () => {
             <Col xs={24}>
               <Button
                 type="primary"
-                onClick={generateReport}
+                onClick={() => generateReport(selectedSymbol, selectedParameterSet, period, language)}
                 loading={loading}
                 disabled={!selectedSymbol}
               >
@@ -506,37 +512,7 @@ const DetailedReport = () => {
         <Card className="explanation-card mt-4">
           <Title level={4}>{t('detailed_report.strategy_explanation')}</Title>
           <Paragraph>
-            {selectedParameterSet === 'trend_following' && (
-              <div>
-                <b>{t('parameter_sets.trend_following')}: </b>
-                SMA(50,200) + EMA(12,26) + ADX(14). 
-                {t('strategy_explanations.trend_following')}
-              </div>
-            )}
-            
-            {selectedParameterSet === 'momentum' && (
-              <div>
-                <b>{t('parameter_sets.momentum')}: </b>
-                RSI(14) + MACD(12,26,9) + Stochastic(14,3). 
-                {t('strategy_explanations.momentum')}
-              </div>
-            )}
-            
-            {selectedParameterSet === 'volatility' && (
-              <div>
-                <b>{t('parameter_sets.volatility')}: </b>
-                Bollinger Bands(20,2) + ATR(14) + Keltner Channels. 
-                {t('strategy_explanations.volatility')}
-              </div>
-            )}
-            
-            {selectedParameterSet === 'ichimoku' && (
-              <div>
-                <b>{t('parameter_sets.ichimoku')}: </b>
-                Ichimoku Cloud(9,26,52) + Parabolic SAR(0.02,0.2) + On-Balance Volume. 
-                {t('strategy_explanations.ichimoku')}
-              </div>
-            )}
+            <StrategyExplanation parameterSet={selectedParameterSet} />
           </Paragraph>
         </Card>
       )}

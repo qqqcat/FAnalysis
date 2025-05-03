@@ -603,6 +603,62 @@ def generate_report(symbol):
         traceback.print_exc()
         return jsonify({'error': f'An error occurred: {str(e)}'}), 500
 
+@app.route('/api/recent_reports', methods=['GET'])
+def get_recent_reports():
+    """
+    Get a list of recently generated reports
+    Optional query parameters:
+    - limit: Maximum number of reports to return (default: 5)
+    """
+    limit = int(request.args.get('limit', 5))
+    
+    try:
+        # Get all report files in the reports directory
+        report_files = glob.glob(os.path.join(REPORTS_DIR, '*_interactive_report_*.html'))
+        
+        # Sort by modification time (newest first)
+        report_files.sort(key=os.path.getmtime, reverse=True)
+        
+        # Limit the number of files
+        report_files = report_files[:limit]
+        
+        # Format report information
+        reports = []
+        for file_path in report_files:
+            filename = os.path.basename(file_path)
+            
+            # Parse the filename to extract symbol, date and parameter set
+            # Expected format: SYMBOL_interactive_report_YYYYMMDD_PARAMETER_SET.html
+            parts = filename.split('_')
+            if len(parts) >= 5 and 'interactive_report' in filename:
+                symbol = parts[0]
+                
+                # Extract date - should be the first 8-digit sequence
+                date_part = None
+                for part in parts:
+                    if part.isdigit() and len(part) == 8:
+                        date_part = part
+                        break
+                
+                # Format date for display (YYYYMMDD to YYYY-MM-DD)
+                formatted_date = f"{date_part[:4]}-{date_part[4:6]}-{date_part[6:8]}" if date_part else ""
+                
+                # Extract parameter set (usually comes after the date)
+                parameter_set = parts[-1].replace('.html', '')
+                
+                reports.append({
+                    'symbol': symbol,
+                    'date': formatted_date,
+                    'parameterSet': parameter_set,
+                    'filename': filename,
+                    'url': f"/reports/{filename}"
+                })
+        
+        return jsonify(reports)
+    except Exception as e:
+        logger.error(f"Error fetching recent reports: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api', methods=['GET'])
 def api_index():
     """API welcome page with available endpoints"""
@@ -615,6 +671,7 @@ def api_index():
         'GET /api/optimal_indicators/<asset_type>': 'Get optimal indicators for an asset type',
         'GET /api/market_summary': 'Get market summary data for dashboard',
         'GET /api/generate_report/<symbol>': 'Generate an HTML report for a symbol',
+        'GET /api/recent_reports': 'Get a list of recently generated reports',
         'GET /charts/<filename>': 'Serve chart files',
         'GET /reports/<filename>': 'Serve report files'
     }

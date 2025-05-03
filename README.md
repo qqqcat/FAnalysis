@@ -257,6 +257,7 @@ The system supports various technical indicator parameter sets:
 3. Use `python run.py` as the primary way to start, build, and manage the application
 4. Interactive charts are available in the `Charts/` directory with *_interactive_*.html filenames
 5. For development, use `python run.py both` to start both frontend and backend together
+6. Charts currently use fixed heights (850px). For better responsive behavior on different screen sizes, modify CSS in templates to use relative units (vh/%) and Flexbox/Grid layouts
 
 ## 注意事项  
 1. 环境变量配置文件：`web/.env` 需要根据实际部署环境修改  
@@ -264,3 +265,4 @@ The system supports various technical indicator parameter sets:
 3. 使用`python run.py`作为启动、构建和管理应用程序的主要方式
 4. 交互式图表可在`Charts/`目录中找到，文件名包含*_interactive_*.html
 5. 开发时，使用`python run.py both`同时启动前端和后端
+6. 图表当前使用固定高度（850px）。为了在不同屏幕尺寸上获得更好的响应式表现，请修改模板中的CSS，使用相对单位（vh/%）和Flexbox/Grid布局
