@@ -8,6 +8,7 @@ Flask backend API for the Financial Analysis web platform
 import os
 import sys
 import pandas as pd
+import numpy as np
 import json
 from datetime import datetime, timedelta
 from flask import Flask, request, jsonify, send_from_directory
@@ -138,10 +139,34 @@ def format_indicator_data(df):
     """
     Format indicator data for JSON response
     """
-    # Convert DataFrame to dictionary with date strings as keys
-    df = df.reset_index()
-    df['Date'] = df['Date'].dt.strftime('%Y-%m-%d')
+    # Store index name before resetting
+    index_name = df.index.name if df.index.name else 'Date' # Default to 'Date' if index has no name
     
+    # Reset index, making the original index a column
+    df = df.reset_index()
+    
+    # Ensure the column derived from the index is datetime
+    # Use the stored index name
+    if index_name in df.columns:
+        # Convert to datetime just in case it's not already
+        df[index_name] = pd.to_datetime(df[index_name], errors='coerce') 
+        # Format the datetime column to string, handle potential NaT from coerce
+        df[index_name] = df[index_name].dt.strftime('%Y-%m-%d')
+        # Rename the column to 'Date' if it's not already named 'Date' for consistency
+        if index_name != 'Date':
+             df.rename(columns={index_name: 'Date'}, inplace=True)
+    else:
+        # Fallback or error handling if the expected index column isn't found
+        logger.warning(f"Expected index column '{index_name}' not found after reset_index(). Date formatting might be incorrect.")
+        # Attempt to find a date-like column if 'Date' doesn't exist
+        if 'Date' not in df.columns:
+             date_col = next((col for col in df.columns if 'date' in col.lower()), None)
+             if date_col:
+                 df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
+                 df[date_col] = df[date_col].dt.strftime('%Y-%m-%d')
+                 df.rename(columns={date_col: 'Date'}, inplace=True)
+
+
     # Format to list of objects with date and values
     result = df.to_dict(orient='records')
     return result
@@ -196,10 +221,13 @@ def get_indicators(symbol):
     try:
         # Get data for the symbol
         data = get_symbol_data(symbol, period)
-        
+        logger.info(f"原始数据预览: {data.head()}")
+        logger.info(f"原始数据index类型: {type(data.index)}, index name: {data.index.name}")
+
         # Calculate indicators
         with_indicators = calculate_indicators(data, parameter_set=parameter_set)
-        
+        logger.info(f"指标数据预览: {with_indicators.head()}")
+
         # Return processed data
         return jsonify({
             'symbol': symbol,
@@ -392,6 +420,60 @@ def get_market_summary():
             {'asset': 'OIL', 'lastPrice': 82.63, 'change': -1.45, 'changePercent': -1.72, 'trend': 'down'}
         ]
         return jsonify(fallback_data)
+
+@app.route('/api/chart-data/<symbol>', methods=['GET'])
+def get_chart_data(symbol):
+    """
+    Get combined price and indicator data for frontend charting
+    Optional query parameters:
+    - parameter_set: indicator parameter set to use (default: 'default')
+    - period: time period for data (default: '1y')
+    """
+    parameter_set = request.args.get('parameter_set', 'default')
+    period = request.args.get('period', '1y')
+    
+    if parameter_set not in PARAMETER_SETS:
+        return jsonify({'error': f'Invalid parameter set: {parameter_set}. Choose from: {", ".join(PARAMETER_SETS)}'}), 400
+        
+    try:
+        # Get raw price data
+        price_data = get_symbol_data(symbol, period)
+        if price_data.empty:
+            return jsonify({'error': f'Could not retrieve data for symbol: {symbol}'}), 404
+            
+        # Calculate indicators
+        indicator_data = calculate_indicators(price_data.copy(), parameter_set=parameter_set)
+
+        # 合并数据时只保留一份主数据，避免 _x/_y 列
+        combined_data = price_data.copy()
+        for col in indicator_data.columns:
+            combined_data[col] = indicator_data[col]
+
+        # Format data for JSON response
+        combined_data.replace([pd.NA, None, float('inf'), float('-inf')], np.nan, inplace=True)
+        formatted_data = format_indicator_data(combined_data)
+        for record in formatted_data:
+            for key, value in record.items():
+                if pd.isna(value):
+                    record[key] = None
+
+        logger.info(f"Formatted data length for {symbol}: {len(formatted_data)}")
+        if len(formatted_data) > 0:
+            logger.info(f"First record for {symbol}: {formatted_data[0]}")
+            if len(formatted_data) > 1:
+                logger.info(f"Last record for {symbol}: {formatted_data[-1]}")
+
+        return jsonify({
+            'symbol': symbol,
+            'parameter_set': parameter_set,
+            'data': formatted_data
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting chart data for {symbol}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'An error occurred while processing chart data: {str(e)}'}), 500
 
 @app.route('/api', methods=['GET'])
 def api_index():
