@@ -105,6 +105,18 @@ const DetailedReport = () => {
     fetchInitialData();
   }, [symbol, t]); // eslint-disable-line react-hooks/exhaustive-deps
   
+  // Watch for language changes and regenerate the report when needed
+  useEffect(() => {
+    // Skip the first render - we only want to respond to actual language changes
+    if (initialDataLoaded.current && selectedSymbol && !loading && !generatingReport.current) {
+      // Reset any previously loaded report
+      reportAlreadyLoaded.current = false;
+      
+      // Generate a new report with the updated language
+      generateReport();
+    }
+  }, [language]); // eslint-disable-line react-hooks/exhaustive-deps
+  
   // Function to fetch and display the report content
   const fetchAndDisplayReport = async (url) => {
     try {
