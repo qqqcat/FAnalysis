@@ -1,21 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { 
   Card, Row, Col, Typography, Select, Button, Spin, 
-  Tabs, Empty, Alert, Divider, Form, DatePicker, Radio 
+  Tabs, Empty, Alert, Divider, Form, Radio 
 } from 'antd';
 import { 
   PrinterOutlined, 
   DownloadOutlined, 
-  FileTextOutlined, 
-  AreaChartOutlined 
+  ReloadOutlined 
 } from '@ant-design/icons';
 import ApiService from '../services/ApiService';
+import axios from 'axios';
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Paragraph } = Typography;
 const { Option } = Select;
-const { TabPane } = Tabs;
 
 const DetailedReport = () => {
   const { symbol } = useParams();
@@ -31,13 +30,41 @@ const DetailedReport = () => {
   const [language, setLanguage] = useState(i18n.language || 'en');
   const [period, setPeriod] = useState('1y');
   const [reportUrl, setReportUrl] = useState(null);
+  const [reportContent, setReportContent] = useState('');
   const [error, setError] = useState(null);
   
+  // Use refs to track loading status and prevent duplicate requests
+  const reportAlreadyLoaded = useRef(false);
+  const initialDataLoaded = useRef(false);
+  const generatingReport = useRef(false);
+  const reportContainerRef = useRef(null);
+  
+  // Handle direct links to report HTML files - only runs once on mount
+  useEffect(() => {
+    if (symbol && symbol.endsWith('.html') && !reportAlreadyLoaded.current) {
+      reportAlreadyLoaded.current = true;
+      // Extract the actual symbol from the filename
+      const baseSymbol = symbol.split('_')[0];
+      setSelectedSymbol(baseSymbol);
+      
+      // Set report URL directly without triggering report generation
+      const reportPath = `/reports/${symbol}`;
+      setReportUrl(reportPath);
+      fetchAndDisplayReport(reportPath);
+    }
+  }, []); 
+
   // Load assets and parameters on component mount
   useEffect(() => {
+    // Prevent duplicate calls
+    if (initialDataLoaded.current) {
+      return;
+    }
+    
     const fetchInitialData = async () => {
       try {
         setLoading(true);
+        initialDataLoaded.current = true;
         
         // Fetch asset categories
         const categories = await ApiService.getAssets();
@@ -47,9 +74,25 @@ const DetailedReport = () => {
         const parameters = await ApiService.getParameters();
         setParameterSets(parameters);
         
-        // If symbol is provided in URL, generate report
-        if (symbol) {
-          generateReport();
+        // If symbol is provided in URL and we haven't loaded a report yet, attempt to show it
+        if (symbol && !reportAlreadyLoaded.current) {
+          // Extract the actual symbol if it's an HTML file name
+          let actualSymbol = symbol;
+          if (symbol.includes('_interactive_report_')) {
+            actualSymbol = symbol.split('_')[0];
+            setSelectedSymbol(actualSymbol);
+          }
+          
+          // If this is a direct link to a report file, just display it without regenerating
+          if (symbol.endsWith('.html')) {
+            reportAlreadyLoaded.current = true;
+            const reportPath = `/reports/${symbol}`;
+            setReportUrl(reportPath);
+            await fetchAndDisplayReport(reportPath);
+          } else if (!generatingReport.current) {
+            // Only generate a new report if we're not already generating one
+            await generateReport();
+          }
         }
       } catch (error) {
         console.error('Error fetching initial data:', error);
@@ -62,49 +105,209 @@ const DetailedReport = () => {
     fetchInitialData();
   }, [symbol, t]); // eslint-disable-line react-hooks/exhaustive-deps
   
+  // Function to fetch and display the report content
+  const fetchAndDisplayReport = async (url) => {
+    try {
+      setLoading(true);
+      // Fetch the HTML content
+      const response = await axios.get(url);
+      
+      if (response.status === 200) {
+        // Get the full HTML content
+        let htmlContent = response.data;
+        
+        // Extract the <head> content for styles and scripts
+        const headMatch = htmlContent.match(/<head[^>]*>([\s\S]*)<\/head>/i);
+        const bodyMatch = htmlContent.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+        
+        if (bodyMatch && bodyMatch[1]) {
+          // Get just the body content
+          const bodyContent = bodyMatch[1];
+          
+          // Create a div to hold styles and scripts
+          let stylesAndScripts = '';
+          
+          // Extract and prepare styles from <head>
+          if (headMatch && headMatch[1]) {
+            const headContent = headMatch[1];
+            
+            // Extract style tags
+            const styleTagsRegex = /<style[^>]*>[\s\S]*?<\/style>/gi;
+            const styleTags = headContent.match(styleTagsRegex) || [];
+            stylesAndScripts += styleTags.join('');
+            
+            // Extract link tags for CSS
+            const linkTagsRegex = /<link[^>]*rel=["']stylesheet["'][^>]*>/gi;
+            const linkTags = headContent.match(linkTagsRegex) || [];
+            
+            // Extract cdn script tags (especially plotly)
+            const scriptTagsRegex = /<script[^>]*src=["'][^"']*cdn[^"']*["'][^>]*>[\s\S]*?<\/script>/gi;
+            const scriptTags = headContent.match(scriptTagsRegex) || [];
+            stylesAndScripts += scriptTags.join('');
+          }
+          
+          // Set the HTML content with necessary styles and external scripts
+          setReportContent(`
+            ${stylesAndScripts}
+            <div class="report-content">
+              ${bodyContent}
+            </div>
+          `);
+          
+          // Add event listener for script execution
+          setTimeout(() => {
+            if (reportContainerRef.current) {
+              // Manually add Plotly if needed
+              if (!window.Plotly) {
+                const plotlyScript = document.createElement('script');
+                plotlyScript.src = 'https://cdn.plot.ly/plotly-latest.min.js';
+                plotlyScript.async = true;
+                document.head.appendChild(plotlyScript);
+                
+                plotlyScript.onload = () => {
+                  // Process any inline scripts that might depend on Plotly
+                  processScripts();
+                };
+              } else {
+                processScripts();
+              }
+            }
+          }, 100);
+        } else {
+          throw new Error('Could not extract report body content');
+        }
+      } else {
+        throw new Error(`Failed to fetch report: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error('Error fetching report:', error);
+      setError(t('error_fetching_report'));
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Helper function to process scripts in the report
+  const processScripts = () => {
+    if (!reportContainerRef.current) return;
+    
+    // Process any script tags in the report
+    const scripts = reportContainerRef.current.querySelectorAll('script');
+    scripts.forEach(script => {
+      try {
+        const newScript = document.createElement('script');
+        
+        // Copy all attributes from old script to new script
+        Array.from(script.attributes).forEach(attr => {
+          newScript.setAttribute(attr.name, attr.value);
+        });
+        
+        // If it has src, set it, otherwise use the inner content
+        if (script.src) {
+          newScript.src = script.src;
+        } else {
+          newScript.textContent = script.textContent;
+        }
+        
+        // Replace old with new
+        script.parentNode.replaceChild(newScript, script);
+      } catch (err) {
+        console.error('Error processing script:', err);
+      }
+    });
+  };
+  
   const generateReport = async () => {
-    if (!selectedSymbol) {
+    if (!selectedSymbol || generatingReport.current) {
       return;
     }
     
     try {
       setLoading(true);
       setError(null);
+      generatingReport.current = true;
       
-      // Generate charts first (which also calculates indicators)
-      const chartsData = await ApiService.generateCharts(
-        selectedSymbol, 
+      // Make sure we're always using the base symbol (not a filename)
+      let baseSymbol = selectedSymbol;
+      if (selectedSymbol.includes('_')) {
+        // Extract the actual symbol if it's a filename pattern
+        baseSymbol = selectedSymbol.split('_')[0];
+        setSelectedSymbol(baseSymbol);
+      }
+      
+      // First, generate charts (which calculates indicators)
+      await ApiService.generateCharts(
+        baseSymbol, 
         [selectedParameterSet], 
         period
       );
       
-      // Assume charts generation was successful, create a URL for the report
-      // In a real implementation, we would make an API call to generate a report
-      // and get a direct URL to that report
-      const reportUrlPath = `/reports/${selectedSymbol}_interactive_report_${new Date().toISOString().split('T')[0].replace(/-/g, '')}_${selectedParameterSet}.html`;
-      setReportUrl(reportUrlPath);
+      // Now call the API endpoint to generate the report
+      const reportResponse = await ApiService.get(
+        `/api/generate_report/${baseSymbol}?parameter_set=${selectedParameterSet}&period=${period}&language=${language}`
+      );
+      
+      if (reportResponse && reportResponse.report_url) {
+        reportAlreadyLoaded.current = true;
+        setReportUrl(reportResponse.report_url);
+        // Fetch and display the report content
+        await fetchAndDisplayReport(reportResponse.report_url);
+      } else {
+        throw new Error('Failed to get report URL from server');
+      }
     } catch (error) {
       console.error(`Error generating report for ${selectedSymbol}:`, error);
       setError(t('error'));
     } finally {
       setLoading(false);
+      generatingReport.current = false;
     }
   };
   
   const handleSymbolChange = (value) => {
-    setSelectedSymbol(value);
+    if (value !== selectedSymbol) {
+      // Reset the report URL when changing symbols
+      setReportUrl(null);
+      setReportContent('');
+      reportAlreadyLoaded.current = false;
+      setSelectedSymbol(value);
+    }
   };
   
   const handleParameterChange = (value) => {
-    setSelectedParameterSet(value);
+    if (value !== selectedParameterSet) {
+      // Reset the report URL when changing parameters
+      setReportUrl(null);
+      setReportContent('');
+      reportAlreadyLoaded.current = false;
+      setSelectedParameterSet(value);
+    }
   };
   
   const handlePeriodChange = (value) => {
-    setPeriod(value);
+    if (value !== period) {
+      // Reset the report URL when changing period
+      setReportUrl(null);
+      setReportContent('');
+      reportAlreadyLoaded.current = false;
+      setPeriod(value);
+    }
   };
   
   const handleLanguageChange = (e) => {
-    setLanguage(e.target.value);
+    if (e.target.value !== language) {
+      // Reset the report URL when changing language
+      setReportUrl(null);
+      setReportContent('');
+      reportAlreadyLoaded.current = false;
+      setLanguage(e.target.value);
+    }
+  };
+  
+  const handleRefresh = () => {
+    if (reportUrl) {
+      fetchAndDisplayReport(reportUrl);
+    }
   };
   
   const renderSymbolOptions = () => {
@@ -149,7 +352,7 @@ const DetailedReport = () => {
       );
     }
     
-    if (!reportUrl) {
+    if (!reportUrl || !reportContent) {
       return (
         <Empty 
           description={t('detailed_report.report_not_found')}
@@ -173,21 +376,29 @@ const DetailedReport = () => {
           <Button 
             icon={<DownloadOutlined />} 
             onClick={() => window.open(reportUrl, '_blank')}
+            style={{ marginRight: '10px' }}
           >
             {t('detailed_report.download_report')}
           </Button>
+
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={handleRefresh}
+          >
+            {t('refresh')}
+          </Button>
         </div>
         
-        <iframe
-          src={reportUrl}
+        <div 
+          ref={reportContainerRef}
+          className="report-container"
           style={{
-            width: '100%',
-            height: '800px',
-            border: 'none',
+            backgroundColor: 'white',
+            padding: '20px',
             borderRadius: '8px',
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
           }}
-          title={`${selectedSymbol} Report`}
+          dangerouslySetInnerHTML={{ __html: reportContent }}
         />
       </div>
     );

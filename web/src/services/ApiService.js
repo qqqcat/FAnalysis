@@ -116,6 +116,21 @@ class ApiService {
       throw error;
     }
   }
+
+  /**
+   * General purpose GET request to API
+   * @param {string} endpoint - The API endpoint URL (including any path parameters)
+   * @param {Object} params - Optional query parameters
+   */
+  static async get(endpoint, params = {}) {
+    try {
+      const response = await axios.get(`${API_URL}${endpoint}`, { params });
+      return response.data;
+    } catch (error) {
+      console.error(`Error making GET request to ${endpoint}:`, error);
+      throw error;
+    }
+  }
 }
 
 export default ApiService;

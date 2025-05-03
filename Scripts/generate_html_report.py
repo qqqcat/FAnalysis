@@ -16,7 +16,7 @@ import jinja2
 # Import core functions
 from calculate_indicators import calculate_indicators
 
-def generate_interactive_report(df, symbol, output_dir, report_date=None, parameter_set='default', language='en'):
+def generate_interactive_report(df, symbol, output_dir, report_date=None, parameter_set='default', language='en', standalone=False):
     """
     Generate an interactive HTML report with technical indicators
     
@@ -27,6 +27,7 @@ def generate_interactive_report(df, symbol, output_dir, report_date=None, parame
         report_date (str): Report date in YYYYMMDD format
         parameter_set (str): Parameter set used for the indicators
         language (str): Report language (en/zh)
+        standalone (bool): If True, includes X-Frame-Options header to prevent embedding in iframes
         
     Returns:
         str: Path to the generated HTML report
@@ -77,7 +78,8 @@ def generate_interactive_report(df, symbol, output_dir, report_date=None, parame
         oscillators_chart=oscillators_chart,
         volatility_chart=volatility_chart,
         indicator_readings=indicator_readings,
-        strategy_signals=strategy_signals
+        strategy_signals=strategy_signals,
+        standalone=standalone
     )
     
     # Save the report
@@ -431,7 +433,7 @@ def prepare_indicator_readings(df, latest, prev, translations):
     readings = {
         'price_data': {
             'title': translations['price_data'],
-            'values': [
+            'data_points': [  # Changed 'items' to 'data_points' to avoid conflict
                 {'name': translations['last_close'], 'value': f"{latest['Close']:.4f}"},
                 {'name': translations['prev_close'], 'value': f"{prev['Close']:.4f}"},
                 {'name': translations['change'], 'value': f"{(latest['Close'] - prev['Close']):.4f} ({(latest['Close'] / prev['Close'] - 1) * 100:.2f}%)"}
@@ -439,19 +441,19 @@ def prepare_indicator_readings(df, latest, prev, translations):
         },
         'moving_averages': {
             'title': translations['moving_averages'],
-            'values': []
+            'data_points': []  # Changed 'items' to 'data_points'
         },
         'oscillators': {
             'title': translations['oscillators'],
-            'values': []
+            'data_points': []  # Changed 'items' to 'data_points'
         },
         'volatility': {
             'title': translations['volatility'],
-            'values': []
+            'data_points': []  # Changed 'items' to 'data_points'
         },
         'trend': {
             'title': translations['trend'],
-            'values': []
+            'data_points': []  # Changed 'items' to 'data_points'
         }
     }
     
@@ -459,66 +461,66 @@ def prepare_indicator_readings(df, latest, prev, translations):
     ma_cols = ['SMA20', 'SMA50', 'SMA200', 'EMA20', 'EMA50', 'EMA200']
     for col in ma_cols:
         if col in latest:
-            readings['moving_averages']['values'].append({
+            readings['moving_averages']['data_points'].append({  # Changed 'items' to 'data_points'
                 'name': col,
                 'value': f"{latest[col]:.4f}"
             })
     
     # Add oscillators
     if 'RSI' in latest:
-        readings['oscillators']['values'].append({
+        readings['oscillators']['data_points'].append({  # Changed 'items' to 'data_points'
             'name': 'RSI(14)',
             'value': f"{latest['RSI']:.2f}"
         })
     
     if all(col in latest for col in ['MACD', 'MACD_Signal', 'MACD_Histogram']):
-        readings['oscillators']['values'].extend([
+        readings['oscillators']['data_points'].extend([  # Changed 'items' to 'data_points'
             {'name': 'MACD', 'value': f"{latest['MACD']:.4f}"},
             {'name': 'MACD Signal', 'value': f"{latest['MACD_Signal']:.4f}"},
             {'name': 'MACD Histogram', 'value': f"{latest['MACD_Histogram']:.4f}"}
         ])
     
     if all(col in latest for col in ['STOCH_K', 'STOCH_D']):
-        readings['oscillators']['values'].extend([
+        readings['oscillators']['data_points'].extend([  # Changed 'items' to 'data_points'
             {'name': 'Stochastic %K', 'value': f"{latest['STOCH_K']:.2f}"},
             {'name': 'Stochastic %D', 'value': f"{latest['STOCH_D']:.2f}"}
         ])
     
     # Add volatility indicators
     if all(col in latest for col in ['BB_High', 'BB_Mid', 'BB_Low']):
-        readings['volatility']['values'].extend([
+        readings['volatility']['data_points'].extend([  # Changed 'items' to 'data_points'
             {'name': 'Bollinger High', 'value': f"{latest['BB_High']:.4f}"},
             {'name': 'Bollinger Mid', 'value': f"{latest['BB_Mid']:.4f}"},
             {'name': 'Bollinger Low', 'value': f"{latest['BB_Low']:.4f}"}
         ])
     
     if 'ATR' in latest:
-        readings['volatility']['values'].append({
+        readings['volatility']['data_points'].append({  # Changed 'items' to 'data_points'
             'name': 'ATR(14)',
             'value': f"{latest['ATR']:.4f}"
         })
     
     if 'BB_Width' in latest:
-        readings['volatility']['values'].append({
+        readings['volatility']['data_points'].append({  # Changed 'items' to 'data_points'
             'name': 'Bollinger Width',
             'value': f"{latest['BB_Width']:.4f}"
         })
     
     if 'ATR_Percent' in latest:
-        readings['volatility']['values'].append({
+        readings['volatility']['data_points'].append({  # Changed 'items' to 'data_points'
             'name': 'ATR %',
             'value': f"{latest['ATR_Percent']:.2f}%"
         })
     
     # Add trend indicators
     if 'ADX' in latest:
-        readings['trend']['values'].append({
+        readings['trend']['data_points'].append({  # Changed 'items' to 'data_points'
             'name': 'ADX(14)',
             'value': f"{latest['ADX']:.2f}"
         })
     
     if 'SAR' in latest:
-        readings['trend']['values'].append({
+        readings['trend']['data_points'].append({  # Changed 'items' to 'data_points'
             'name': 'Parabolic SAR',
             'value': f"{latest['SAR']:.4f}"
         })
@@ -700,6 +702,7 @@ if __name__ == "__main__":
                        help="Trading strategy parameter set")
     parser.add_argument("--language", default="en", choices=["en", "zh"], help="Report language")
     parser.add_argument("--date", default=None, help="Report date in YYYYMMDD format")
+    parser.add_argument("--standalone", action="store_true", help="Generate standalone report")
     
     args = parser.parse_args()
     
@@ -724,7 +727,8 @@ if __name__ == "__main__":
         output_dir, 
         report_date=args.date, 
         parameter_set=args.parameter_set,
-        language=args.language
+        language=args.language,
+        standalone=args.standalone
     )
     
     print(f"Report generated: {report_path}")

@@ -68,7 +68,7 @@ function App() {
       {
         key: 'dashboard',
         icon: <DashboardOutlined />,
-        label: t('dashboard'),
+        label: 'Dashboard', // 直接显示 Dashboard，保留多语言可扩展性
         onClick: () => navigate('/')
       }
     ];

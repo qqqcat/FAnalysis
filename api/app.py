@@ -74,7 +74,7 @@ def get_symbol_data(symbol, period="1y"):
                 logger.info(f"正在加载已修复的文件: {fixed_filename}")
                 data = pd.read_csv(fixed_file_path)
                 if 'Date' in data.columns:
-                    data['Date'] = pd.to_datetime(data['Date'])
+                    data['Date'] = pd.to_datetime(data['Date'], utc=True)
                     data.set_index('Date', inplace=True)
                     return data
             except Exception as e:
@@ -90,7 +90,7 @@ def get_symbol_data(symbol, period="1y"):
                 # 尝试跳过可能的标题行
                 data = pd.read_csv(orig_file_path, skiprows=[1, 2] if check_has_ticker_row(orig_file_path) else None)
                 if 'Date' in data.columns:
-                    data['Date'] = pd.to_datetime(data['Date'])
+                    data['Date'] = pd.to_datetime(data['Date'], utc=True)
                     data.set_index('Date', inplace=True)
                     return data
             except Exception as e:
@@ -107,7 +107,7 @@ def get_symbol_data(symbol, period="1y"):
             logger.info(f"尝试加载最新的修复文件: {os.path.basename(fixed_files[0])}")
             data = pd.read_csv(fixed_files[0])
             if 'Date' in data.columns:
-                data['Date'] = pd.to_datetime(data['Date'])
+                data['Date'] = pd.to_datetime(data['Date'], utc=True)
                 data.set_index('Date', inplace=True)
                 return data
         except Exception as e:
@@ -250,6 +250,18 @@ def generate_charts(symbol):
     parameter_sets = parameter_sets_str.split(',')
     period = request.args.get('period', '1y')
     interval = request.args.get('interval', '1d')
+    
+    # Enhanced fix: Extract actual symbol if the request contains ANY filename pattern
+    # This handles all patterns like SYMBOL_*, not just HTML report filenames
+    if '_' in symbol:
+        parts = symbol.split('_')
+        potential_symbol = parts[0]
+        # Check if the first part is a valid symbol
+        if potential_symbol in ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'GOLD', 'SILVER', 'OIL', 'S&P500', 'NASDAQ', 'DOW']:
+            symbol = potential_symbol
+            logger.info(f"Extracted symbol {symbol} from filename pattern")
+        else:
+            logger.warning(f"Received unusual symbol format: {symbol}, attempting to process as-is")
     
     # Validate parameter sets
     for ps in parameter_sets:
@@ -440,7 +452,32 @@ def get_chart_data(symbol):
         price_data = get_symbol_data(symbol, period)
         if price_data.empty:
             return jsonify({'error': f'Could not retrieve data for symbol: {symbol}'}), 404
-            
+        
+        # Debug: Print data type of each column to diagnose issues
+        logger.info(f"Data columns for {symbol}: {price_data.columns.tolist()}")
+        logger.info(f"Data types: {price_data.dtypes}")
+        
+        # Ensure all numeric columns are properly converted to float
+        for col in price_data.columns:
+            # Skip Date column if it exists
+            if col in ['Date']:
+                continue
+                
+            # Try to convert to numeric, coerce errors to NaN
+            try:
+                price_data[col] = pd.to_numeric(price_data[col], errors='coerce')
+            except Exception as e:
+                logger.warning(f"Could not convert column {col} to numeric: {str(e)}")
+        
+        # Check again after conversion
+        logger.info(f"Data types after conversion: {price_data.dtypes}")
+        
+        # Drop any rows with NaN in essential columns
+        essential_columns = ['Open', 'High', 'Low', 'Close']
+        for col in essential_columns:
+            if col in price_data.columns:
+                price_data = price_data.dropna(subset=[col])
+        
         # Calculate indicators
         indicator_data = calculate_indicators(price_data.copy(), parameter_set=parameter_set)
 
@@ -475,6 +512,97 @@ def get_chart_data(symbol):
         traceback.print_exc()
         return jsonify({'error': f'An error occurred while processing chart data: {str(e)}'}), 500
 
+@app.route('/api/generate_report/<symbol>', methods=['GET'])
+def generate_report(symbol):
+    """
+    Generate an HTML report for a symbol
+    Optional query parameters:
+    - parameter_set: indicator parameter set to use
+    - period: time period for data
+    - language: report language (en/zh)
+    - standalone: if true, report is meant to be viewed directly, not in an iframe
+    """
+    parameter_set = request.args.get('parameter_set', 'default')
+    period = request.args.get('period', '1y')
+    language = request.args.get('language', 'en')
+    standalone = request.args.get('standalone', 'false') == 'true'
+    
+    # Extract actual symbol if needed (same as in generate_charts)
+    actual_symbol = symbol.split('_')[0]
+    if actual_symbol in ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'GOLD', 'SILVER', 'OIL', 'S&P500', 'NASDAQ', 'DOW']:
+        symbol = actual_symbol
+    
+    if parameter_set not in PARAMETER_SETS:
+        return jsonify({'error': f'Invalid parameter set. Choose from: {", ".join(PARAMETER_SETS)}'}), 400
+    
+    try:
+        # Get data for the symbol
+        data = get_symbol_data(symbol, period)
+        if data.empty:
+            return jsonify({'error': f'Could not retrieve data for symbol: {symbol}'}), 404
+
+        # Debug: Print data type of each column
+        logger.info(f"Report data columns for {symbol}: {data.columns.tolist()}")
+        logger.info(f"Report data types: {data.dtypes}")
+        
+        # Ensure all numeric columns are properly converted to float
+        for col in data.columns:
+            # Skip Date column if it exists
+            if col in ['Date']:
+                continue
+                
+            # Try to convert to numeric, coerce errors to NaN
+            try:
+                data[col] = pd.to_numeric(data[col], errors='coerce')
+            except Exception as e:
+                logger.warning(f"Could not convert column {col} to numeric: {str(e)}")
+        
+        # Drop any rows with NaN in essential columns
+        essential_columns = ['Open', 'High', 'Low', 'Close']
+        for col in essential_columns:
+            if col in data.columns:
+                data = data.dropna(subset=[col])
+                
+        # Calculate indicators
+        indicator_data = calculate_indicators(data.copy(), parameter_set=parameter_set)
+        
+        # Import the report generation function
+        from generate_html_report import generate_interactive_report
+        
+        # Generate the report
+        current_date = datetime.now().strftime("%Y%m%d")
+        report_filename = f"{symbol}_interactive_report_{current_date}_{parameter_set}.html"
+        
+        # Generate the report
+        try:
+            report_path = generate_interactive_report(
+                indicator_data,
+                symbol,
+                REPORTS_DIR,
+                report_date=current_date,
+                parameter_set=parameter_set,
+                language=language,
+                standalone=standalone
+            )
+            
+            # Return the report URL
+            return jsonify({
+                'success': True,
+                'symbol': symbol,
+                'report_url': f"/reports/{os.path.basename(report_path)}"
+            })
+        except Exception as report_error:
+            logger.error(f"Error generating report: {str(report_error)}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({'error': f'Failed to generate report: {str(report_error)}'}), 500
+        
+    except Exception as e:
+        logger.error(f"Error processing data for report: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'An error occurred: {str(e)}'}), 500
+
 @app.route('/api', methods=['GET'])
 def api_index():
     """API welcome page with available endpoints"""
@@ -486,6 +614,7 @@ def api_index():
         'GET /api/charts/<symbol>': 'Generate and get URLs for symbol charts',
         'GET /api/optimal_indicators/<asset_type>': 'Get optimal indicators for an asset type',
         'GET /api/market_summary': 'Get market summary data for dashboard',
+        'GET /api/generate_report/<symbol>': 'Generate an HTML report for a symbol',
         'GET /charts/<filename>': 'Serve chart files',
         'GET /reports/<filename>': 'Serve report files'
     }

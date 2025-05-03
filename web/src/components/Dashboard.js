@@ -175,14 +175,18 @@ const Dashboard = () => {
       </div>
     );
   }
-  
+
   return (
-    <div className="dashboard-container">
-      <Title level={2}>{t('dashboard.title')}</Title>
-      
+    <div className="dashboard-container enhanced-dashboard">
+      <Title level={2} className="dashboard-title">Dashboard</Title>
+      <div className="dashboard-welcome">
+        <Text type="secondary" style={{ fontSize: 18 }}>
+          {t('dashboard.welcome', 'Welcome to your financial analysis dashboard!')}
+        </Text>
+      </div>
       {/* Quick Analysis Section */}
-      <Card title={t('dashboard.quick_analysis')} className="mb-4">
-        <Row gutter={16}>
+      <Card className="mb-4 dashboard-card" bordered={false}>
+        <Row gutter={16} align="middle">
           <Col xs={24} md={8}>
             <Select
               placeholder={t('chart_analysis.select_symbol')}
@@ -222,11 +226,10 @@ const Dashboard = () => {
           </Col>
         </Row>
       </Card>
-      
       {/* Market Summary Section */}
       <Row gutter={16} className="mb-4">
         <Col span={24}>
-          <Card title={t('dashboard.market_summary')}>
+          <Card className="dashboard-card" title={t('dashboard.market_summary')} bordered={false}>
             <Table 
               dataSource={marketSummary}
               columns={marketSummaryColumns}
@@ -237,13 +240,13 @@ const Dashboard = () => {
           </Card>
         </Col>
       </Row>
-      
-      {/* Optimal Indicators Section */}
+      {/* Optimal Indicators & Recent Reports Section */}
       <Row gutter={16}>
         <Col xs={24} md={12}>
           <Card 
-            title={`${t('dashboard.optimal_indicators')} - ${t(`categories.${selectedCategory}`)}`}
-            className="mb-4"
+            className="dashboard-card" 
+            title={`${t('dashboard.optimal_indicators', 'Optimal Indicators')} - ${t(`categories.${selectedCategory}`)}`}
+            bordered={false}
           >
             {optimalIndicators.length > 0 ? (
               <ul className="indicator-list">
@@ -261,10 +264,8 @@ const Dashboard = () => {
             )}
           </Card>
         </Col>
-        
-        {/* Recent Reports Section */}
         <Col xs={24} md={12}>
-          <Card title={t('dashboard.recent_reports')} className="mb-4">
+          <Card className="dashboard-card" title={t('dashboard.recent_reports', 'Recent Reports')} bordered={false}>
             {recentReports.length > 0 ? (
               <ul>
                 {recentReports.map((report, index) => (
