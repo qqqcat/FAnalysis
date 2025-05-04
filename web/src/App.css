@@ -102,7 +102,8 @@
 }
 
 .chart-display {
-  min-height: 600px;
+  min-height: 800px; /* 增加默认最小高度 */
+  height: calc(100vh - 180px); /* 添加响应式高度计算 */
 }
 
 /* Detailed Report Styles */
@@ -124,7 +125,12 @@
     padding: 16px;
   }
   
-  .chart-display, .report-container {
+  .chart-display {
+    min-height: 600px; /* 增加移动设备下的最小高度 */
+    height: calc(100vh - 220px); /* 移动设备上的响应式高度 */
+  }
+  
+  .report-container {
     min-height: 400px;
   }
 

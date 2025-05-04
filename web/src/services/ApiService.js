@@ -137,6 +137,32 @@ class ApiService {
   }
 
   /**
+   * Generate a detailed report for a symbol
+   * @param {string} symbol - The trading symbol
+   * @param {string} parameterSet - Parameter set to use 
+   * @param {string} period - Time period
+   * @param {string} language - Report language ('en' or 'zh')
+   * @returns {Object} Report generation response
+   */
+  static async generateReport(symbol, parameterSet = 'default', period = '1y', language = 'en') {
+    try {
+      const response = await axios.get(`${API_URL}/api/generate_report/${symbol}`, {
+        params: { parameter_set: parameterSet, period, language }
+      });
+      
+      // Ensure the report_url is correctly formatted with the base URL if it's a relative path
+      if (response.data && response.data.report_url && !response.data.report_url.startsWith('http')) {
+        response.data.report_url = `${API_URL}${response.data.report_url}`;
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error(`Error generating report for ${symbol}:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Get recent reports for the dashboard
    * @param {number} limit - Maximum number of reports to return
    * @returns {Array} Recent report data

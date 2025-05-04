@@ -292,6 +292,14 @@ const DetailedReport = () => {
     fetchInitialData();
   }, [symbol, fetchAndDisplayReport]);
   
+  // Add new effect to fetch report content when report URL changes
+  useEffect(() => {
+    if (reportUrl) {
+      console.log("Report URL changed, fetching report content:", reportUrl);
+      fetchAndDisplayReport(reportUrl);
+    }
+  }, [reportUrl, fetchAndDisplayReport]);
+  
   useEffect(() => {
     if (debouncedSymbol && debouncedParameterSet && debouncedPeriod && debouncedLanguage) {
       generateReport(debouncedSymbol, debouncedParameterSet, debouncedPeriod, debouncedLanguage);

@@ -209,6 +209,9 @@ def calculate_indicators(df, parameter_set='default'):
             data['BB_High'] = bbands_result[f"BBU_{bb_params['length']}_{bb_params['std']}"]
             data['BB_Mid'] = bbands_result[f"BBM_{bb_params['length']}_{bb_params['std']}"]
             data['BB_Low'] = bbands_result[f"BBL_{bb_params['length']}_{bb_params['std']}"]
+            
+            # Calculate BB Width
+            data['BB_Width'] = (data['BB_High'] - data['BB_Low']) / data['BB_Mid']
         elif bb_params['length'] == 14 and bb_params['std'] == 1.5:  # Tight channel
             data['BB_Tight_High'] = bbands_result[f"BBU_{bb_params['length']}_{bb_params['std']}"]
             data['BB_Tight_Mid'] = bbands_result[f"BBM_{bb_params['length']}_{bb_params['std']}"]
@@ -286,7 +289,7 @@ def calculate_indicators(df, parameter_set='default'):
                     if not similar_found:
                         data[dst] = np.nan
             
-            # Calculate Cloud Direction more reliably            # Calculate Cloud Direction more reliably
+            # Calculate Cloud Direction more reliably
             data['Cloud_Direction'] = 0
             data_with_cloud = data.dropna(subset=['Ichimoku_SpanA', 'Ichimoku_SpanB'])
             if not data_with_cloud.empty:
@@ -302,5 +305,95 @@ def calculate_indicators(df, parameter_set='default'):
                         'Ichimoku_SpanB', 'Ichimoku_Chikou']:
                 data[col] = np.nan
             data['Cloud_Direction'] = 0
+            
+    # Calculate ATR and ATR Percentage
+    data['ATR'] = ta.atr(data['High'], data['Low'], data['Close'], length=14)
+    data['ATR_Percent'] = (data['ATR'] / data['Close']) * 100
+    
+    # Calculate Keltner Channels if needed for BB squeeze
+    if 'volatility' in parameter_set or 'default' in parameter_set:
+        keltner_result = ta.kc(data['High'], data['Low'], data['Close'], length=20, scalar=2.0)
+        
+        # Handle different versions of pandas_ta
+        kc_upper_key = next((k for k in keltner_result.keys() if 'KCU' in k), None)
+        kc_lower_key = next((k for k in keltner_result.keys() if 'KCL' in k), None)
+        kc_middle_key = next((k for k in keltner_result.keys() if 'KCM' in k), None)
+        
+        if kc_upper_key and kc_lower_key and kc_middle_key:
+            data['Keltner_High'] = keltner_result[kc_upper_key]
+            data['Keltner_Mid'] = keltner_result[kc_middle_key]
+            data['Keltner_Low'] = keltner_result[kc_lower_key]
+            
+            # Calculate BB squeeze (when Bollinger Bands are inside Keltner Channels)
+            data['BB_Squeeze'] = np.where(
+                (data['BB_High'] < data['Keltner_High']) & 
+                (data['BB_Low'] > data['Keltner_Low']),
+                1, 0
+            )
+    
+    # Calculate strategy signals
+    # These are the signals that prepare_strategy_signals in generate_html_report.py expects
+    
+    # 1. SMA Cross Signal (SMA50 vs SMA200)
+    if all(col in data.columns for col in ['SMA50', 'SMA200']):
+        # 1 for bullish (SMA50 > SMA200), -1 for bearish
+        data['SMA_Cross_Signal'] = np.where(data['SMA50'] > data['SMA200'], 1, -1)
+    
+    # 2. EMA Cross Signal (EMA12 vs EMA26)
+    if all(col in data.columns for col in ['EMA12', 'EMA26']):
+        # 1 for bullish (EMA12 > EMA26), -1 for bearish
+        data['EMA_Cross_Signal'] = np.where(data['EMA12'] > data['EMA26'], 1, -1)
+    
+    # 3. MACD Cross Signal (MACD vs MACD_Signal)
+    if all(col in data.columns for col in ['MACD', 'MACD_Signal']):
+        # 1 for bullish (MACD > Signal), -1 for bearish
+        data['MACD_Cross_Signal'] = np.where(data['MACD'] > data['MACD_Signal'], 1, -1)
+    
+    # 4. RSI Signal
+    if 'RSI' in data.columns:
+        # 1 for bullish (RSI oversold and rising), -1 for bearish (RSI overbought and falling), 0 for neutral
+        data['RSI_Signal'] = 0
+        # Oversold condition (RSI < 30 and rising)
+        data.loc[(data['RSI'] < 30) & (data['RSI'].shift(1) < data['RSI']), 'RSI_Signal'] = 1
+        # Overbought condition (RSI > 70 and falling)
+        data.loc[(data['RSI'] > 70) & (data['RSI'].shift(1) > data['RSI']), 'RSI_Signal'] = -1
+    
+    # 5. Stochastic Signal
+    if all(col in data.columns for col in ['STOCH_K', 'STOCH_D']):
+        # 1 for bullish (K > D and K < 20), -1 for bearish (K < D and K > 80), 0 for neutral
+        data['Stoch_Signal'] = 0
+        # Bullish stochastic crossover in oversold territory
+        data.loc[(data['STOCH_K'] > data['STOCH_D']) & (data['STOCH_K'] < 20), 'Stoch_Signal'] = 1
+        # Bearish stochastic crossover in overbought territory
+        data.loc[(data['STOCH_K'] < data['STOCH_D']) & (data['STOCH_K'] > 80), 'Stoch_Signal'] = -1
+    
+    # 6. SAR Signal
+    if 'SAR' in data.columns:
+        # 1 for bullish (Price > SAR), -1 for bearish
+        data['SAR_Signal'] = np.where(data['Close'] > data['SAR'], 1, -1)
+    
+    # 7. OBV Signal (Simple moving average of OBV)
+    if 'OBV' in data.columns:
+        data['OBV_SMA'] = ta.sma(data['OBV'], length=20)
+        # 1 for bullish (OBV > OBV_SMA), -1 for bearish
+        data['OBV_Signal'] = np.where(data['OBV'] > data['OBV_SMA'], 1, -1)
+    
+    # 8. ADX Trend Strength
+    if 'ADX' in data.columns:
+        # Categorize trend strength based on ADX value
+        data['Trend_Strength'] = 'Weak'
+        data.loc[data['ADX'] > 20, 'Trend_Strength'] = 'Moderate'
+        data.loc[data['ADX'] > 25, 'Trend_Strength'] = 'Strong'
+        data.loc[data['ADX'] > 30, 'Trend_Strength'] = 'Very Strong'
+    
+    # 9. Momentum Score
+    # Combine signals from RSI, MACD, and Stochastic for an overall momentum score
+    data['Momentum_Score'] = 0
+    if 'RSI_Signal' in data.columns:
+        data['Momentum_Score'] += data['RSI_Signal']
+    if 'MACD_Cross_Signal' in data.columns:
+        data['Momentum_Score'] += data['MACD_Cross_Signal']
+    if 'Stoch_Signal' in data.columns:
+        data['Momentum_Score'] += data['Stoch_Signal']
     
     return data

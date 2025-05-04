@@ -104,27 +104,7 @@
       <p>{{ translations.strategy }}: {{ parameter_set }}</p>
     </div>
 
-    <!-- Charts Section -->
-    <div class="row">
-      <div class="col-12">
-        <div class="chart-container">
-          {{ price_ma_chart|safe }}
-        </div>
-      </div>
-    </div>
-
-    <div class="row">
-      <div class="col-md-6">
-        <div class="chart-container">
-          {{ oscillators_chart|safe }}
-        </div>
-      </div>
-      <div class="col-md-6">
-        <div class="chart-container">
-          {{ volatility_chart|safe }}
-        </div>
-      </div>
-    </div>
+    <!-- 直接跳过图表区域，只显示数据和信号 -->
 
     <!-- Data Readings Section -->
     <div class="row">

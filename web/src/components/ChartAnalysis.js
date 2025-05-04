@@ -517,131 +517,6 @@ const createMACDTraces = (data) => {
   return traces;
 };
 
-// 创建波动率相关指标轨迹 (布林带, ATR)
-const createVolatilityTraces = (data) => {
-  if (!data || data.length === 0) return [];
-  
-  const dates = data.map(d => d.Date);
-  const traces = [];
-  
-  // 布林带
-  const bbGroups = [
-    ['BB_High', 'BB_Mid', 'BB_Low'],
-    ['BB_Tight_High', 'BB_Tight_Mid', 'BB_Tight_Low'],
-    ['BB_Wide_High', 'BB_Wide_Mid', 'BB_Wide_Low']
-  ];
-  
-  bbGroups.forEach(group => {
-    // 检查这组布林带是否有足够数据
-    const hasData = group.some(key => 
-      data.some(d => isNumeric(d[key]))
-    );
-    
-    if (!hasData) return;
-    
-    // 创建布林带轨迹，顺序很重要，必须先创建下轨，再创建中轨和上轨
-    // 以保证填充区域正确
-    const orderedGroup = [group[2], group[1], group[0]]; // Low, Mid, High
-    
-    orderedGroup.forEach(key => {
-      const values = data.map(d => d[key]);
-      if (!values.some(isNumeric)) return;
-      
-      const cleanValues = values.map(v => isNumeric(v) ? v : null);
-      const style = getIndicatorStyle(key, cleanValues);
-      
-      traces.push({
-        x: dates,
-        y: cleanValues,
-        name: style.name || key,
-        yaxis: 'y4',
-        showlegend: true,
-        legendgroup: 'volatility',
-        ...style
-      });
-    });
-  });
-  
-  // Ichimoku - 遵循特定绘制顺序以确保正确填充
-  const ichimokuOrder = [
-    'Ichimoku_SpanB', 'Ichimoku_SpanA', // 先绘制云区
-    'Ichimoku_Tenkan', 'Ichimoku_Kijun', 'Ichimoku_Chikou' // 再绘制线
-  ];
-  
-  // 检查是否有足够的Ichimoku数据
-  const hasIchimoku = ichimokuOrder.some(key => 
-    data.some(d => isNumeric(d[key]))
-  );
-  
-  if (hasIchimoku) {
-    ichimokuOrder.forEach(key => {
-      const values = data.map(d => d[key]);
-      if (!values.some(isNumeric)) return;
-      
-      const cleanValues = values.map(v => isNumeric(v) ? v : null);
-      const style = getIndicatorStyle(key, cleanValues);
-      
-      traces.push({
-        x: dates,
-        y: cleanValues,
-        name: style.name || key,
-        yaxis: 'y4',
-        showlegend: true,
-        legendgroup: 'ichimoku',
-        ...style
-      });
-    });
-  }
-  
-  // SAR
-  const sarValues = data.map(d => d.SAR);
-  if (sarValues.some(isNumeric)) {
-    const cleanValues = sarValues.map(v => isNumeric(v) ? v : null);
-    const style = getIndicatorStyle('SAR', cleanValues);
-    
-    traces.push({
-      x: dates,
-      y: cleanValues,
-      name: style.name || 'SAR',
-      yaxis: 'y4',
-      showlegend: true,
-      legendgroup: 'volatility',
-      ...style
-    });
-  }
-  
-  return traces;
-};
-
-// 创建基于成交量的指标轨迹
-const createVolumeTraces = (data) => {
-  if (!data || data.length === 0) return [];
-  
-  const dates = data.map(d => d.Date);
-  const traces = [];
-  const indicators = ['OBV', 'OBV_MA'];
-  
-  indicators.forEach(key => {
-    const values = data.map(d => d[key]);
-    if (!values.some(isNumeric)) return;
-    
-    const cleanValues = values.map(v => isNumeric(v) ? v : null);
-    const style = getIndicatorStyle(key, cleanValues);
-    
-    traces.push({
-      x: dates,
-      y: cleanValues,
-      name: style.name || key,
-      yaxis: 'y5',
-      showlegend: true,
-      legendgroup: 'volume',
-      ...style
-    });
-  });
-  
-  return traces;
-};
-
 const ChartAnalysis = () => {
   const { symbol } = useParams();
   const { t } = useTranslation();
@@ -723,22 +598,25 @@ const ChartAnalysis = () => {
     
     console.log(`Preparing plot data with ${chartData.length} points`);
     
-    // 收集所有轨迹
+    // 收集所有轨迹，只包括前三个图表窗口的数据
     const priceTraces = createPriceTrace(chartData, symbol);
     const maTraces = createMATraces(chartData);
     const oscillatorTraces = createOscillatorTraces(chartData);
     const macdTraces = createMACDTraces(chartData);
-    const volatilityTraces = createVolatilityTraces(chartData);
-    const volumeTraces = createVolumeTraces(chartData);
+    
+    // 不再包含波动率和成交量指标
+    // const volatilityTraces = createVolatilityTraces(chartData);
+    // const volumeTraces = createVolumeTraces(chartData);
     
     // 组合所有轨迹
     const allTraces = [
       ...priceTraces,
       ...maTraces,
       ...oscillatorTraces,
-      ...macdTraces,
-      ...volatilityTraces,
-      ...volumeTraces
+      ...macdTraces
+      // 移除下面两个
+      // ...volatilityTraces,
+      // ...volumeTraces
     ];
     
     console.log(`Created ${allTraces.length} traces total`);
@@ -751,7 +629,9 @@ const ChartAnalysis = () => {
       autosize: true,
       title: {
         text: `${symbol} - ${t(`parameter_sets.${selectedParameterSet}`, selectedParameterSet)} (${period})`,
-        font: { size: 20, color: '#333' }
+        font: { size: 20, color: '#333' },
+        y: 0.97, // 将标题稍微上移
+        yanchor: 'top'
       },
       paper_bgcolor: 'rgba(255,255,255,0.95)',
       plot_bgcolor: 'rgba(250,250,250,0.95)',
@@ -759,7 +639,7 @@ const ChartAnalysis = () => {
       showlegend: true,
       legend: { 
         orientation: "h", 
-        y: 1.12,
+        y: 1.02, // 将图例位置上移
         x: 0.5,
         xanchor: 'center',
         font: { size: 10, color: '#333' },
@@ -769,7 +649,8 @@ const ChartAnalysis = () => {
         groupclick: 'legendonly',
         tracegroupgap: 8
       },
-      margin: { l: 50, r: 60, t: 60, b: 30, pad: 5 },
+      margin: { l: 50, r: 60, t: 80, b: 30, pad: 5 }, // 增加顶部边距
+      height: 1000, // 设置固定高度，确保有足够的空间
       
       // 确保所有子图都使用相同的X轴范围
       xaxis: { 
@@ -787,7 +668,7 @@ const ChartAnalysis = () => {
       
       // 主图 - 价格和MA
       yaxis: {
-        domain: [0.68, 1],
+        domain: [0.65, 1], // 恢复原来比例
         title: {
           text: 'Price',
           font: { size: 12 }
@@ -801,9 +682,9 @@ const ChartAnalysis = () => {
         tickfont: { size: 10 }
       },
       
-      // 子图1 - 震荡指标
+      // 子图1 - 震荡指标 (RSI, Stoch, ADX)
       yaxis2: {
-        domain: [0.48, 0.66],
+        domain: [0.45, 0.63], // 恢复原来比例 
         title: {
           text: 'Oscillators',
           font: { size: 12 }
@@ -819,7 +700,7 @@ const ChartAnalysis = () => {
       
       // 子图2 - MACD
       yaxis3: {
-        domain: [0.28, 0.46],
+        domain: [0.25, 0.43], // 恢复原来比例
         title: {
           text: 'MACD',
           font: { size: 12 }
@@ -834,38 +715,8 @@ const ChartAnalysis = () => {
         tickfont: { size: 10 }
       },
       
-      // 子图3 - 波动率指标
-      yaxis4: {
-        domain: [0.08, 0.26],
-        title: {
-          text: 'Volatility',
-          font: { size: 12 }
-        },
-        fixedrange: false,
-        autorange: true,
-        showgrid: true,
-        gridcolor: 'rgba(200, 200, 200, 0.3)',
-        side: 'right',
-        tickfont: { size: 10 }
-      },
-      
-      // 子图4 - 成交量
-      yaxis5: {
-        domain: [0, 0.06],
-        title: {
-          text: 'Volume',
-          font: { size: 10 }
-        },
-        fixedrange: false,
-        autorange: true,
-        showgrid: true,
-        gridcolor: 'rgba(200, 200, 200, 0.3)',
-        side: 'right',
-        tickfont: { size: 9 }
-      },
-      
       grid: {
-        rows: 5,
+        rows: 3, // 改为只有3个子图区域
         columns: 1,
         pattern: 'independent',
         roworder: 'top to bottom'
@@ -1015,8 +866,15 @@ const ChartAnalysis = () => {
         </Row>
       </Card>
 
-      <Card className="chart-display" style={{ height: 'calc(85vh - 180px)', minHeight: '600px' }}>
-        {renderContent()}
+      <Card className="chart-display" style={{ 
+        height: 'calc(100vh - 180px)', 
+        minHeight: '900px',
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
+        <div style={{ flex: 1, width: '100%', position: 'relative' }}>
+          {renderContent()}
+        </div>
       </Card>
     </div>
   );
