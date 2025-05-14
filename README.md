@@ -544,3 +544,4 @@ Looking ahead, the project has the following planned enhancements:
 7. 图表当前使用固定高度（850px）。为了在不同屏幕尺寸上获得更好的响应式表现，请修改模板中的CSS，使用相对单位（vh/%）和Flexbox/Grid布局
 8. WebSocket实时数据功能现已可用，需要同时运行后端和前端
 9. 通过在报告API调用中添加`format=enhanced`可使用具有增强交互性的新报告格式
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/qqqcat/FAnalysis)
